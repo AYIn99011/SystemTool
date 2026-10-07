@@ -8,6 +8,7 @@
         Background="Transparent"
         ResizeMode="CanResize"
         WindowStyle="None"
+        UseLayoutRounding="True"
         FontFamily="{StaticResource AppFontFamily}"
         TextOptions.TextFormattingMode="Display"
         TextOptions.TextRenderingMode="ClearType"
