@@ -289,6 +289,9 @@ public partial class MainWindow : Window
     {
         if (sender is RadioButton rb && rb.Tag != null)
         {
+            // 默认选中的 RadioButton 会在 InitializeComponent 期间触发 Checked，
+            // 此时 PageTitle 等控件尚未创建；初始导航由 MainWindow_Loaded 负责
+            if (PageTitle == null) return;
             string tag = rb.Tag.ToString()!;
             PageTitle.Text = rb.Content?.ToString() ?? tag;
             NavigateToPage(tag);
