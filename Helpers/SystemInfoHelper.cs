@@ -404,6 +404,8 @@ public static class SystemInfoHelper
         try
         {
             var sb = new StringBuilder("[SystemInfoHelper] LHM 未读到CPU温度，硬件清单(laptop=").Append(laptop).Append("): ");
+            bool cpuFound = false;
+            bool cpuAllNull = true;
             foreach (var hardware in computer.Hardware)
             {
                 sb.Append($"[{hardware.HardwareType}:{hardware.Name} sensors={hardware.Sensors.Length}] ");
@@ -412,6 +414,27 @@ public static class SystemInfoHelper
                     if (s.SensorType == SensorType.Temperature)
                         sb.Append($"{s.Name}={(s.Value.HasValue ? s.Value.Value.ToString("F1") : "null")}; ");
                 }
+                if (hardware.HardwareType == HardwareType.Cpu)
+                {
+                    cpuFound = true;
+                    foreach (var s in hardware.Sensors)
+                    {
+                        if (s.SensorType == SensorType.Temperature && s.Value.HasValue)
+                        {
+                            cpuAllNull = false;
+                            break;
+                        }
+                    }
+                }
+            }
+            // CPU 硬件在但温度全 null：典型原因是 WinRing0 驱动被拦截（HVCI/内存完整性），GPU 走 NVAPI 不受影响
+            if (cpuFound && cpuAllNull)
+            {
+                object? hvci = Registry.GetValue(
+                    @"HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity",
+                    "Enabled", null);
+                sb.Append($"HVCI内存完整性={(hvci?.ToString() == "1" ? "开启(很可能拦截了测温驱动)" : "关闭/未知")}; ");
+                sb.Append("排查: 1)以管理员运行 2)Windows安全中心-设备安全-内核隔离-内存完整性 3)关闭冲突的测温软件后重试");
             }
             LogService.Instance.Warning(sb.ToString());
         }
