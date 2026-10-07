@@ -69,6 +69,15 @@
                             <TextBlock Text="温度" Style="{StaticResource InfoLabel}"/>
                             <TextBlock x:Name="CpuTempText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
                         </Grid>
+                        <Border Height="1" Background="{StaticResource DividerBrush}"/>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="功耗" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="CpuPowerText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                        </Grid>
                     </StackPanel>
                 </Border>
 
@@ -324,6 +333,35 @@
                             <TextBlock Text="使用情况" Style="{StaticResource InfoLabel}"/>
                             <TextBlock x:Name="DiskUsageText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
                         </Grid>
+                        <ItemsControl x:Name="DiskDrivesList" Margin="0,10,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{StaticResource ControlFillBrush}" CornerRadius="6" Padding="12,10" Margin="0,0,0,6">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="110"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Text="型号" Style="{StaticResource InfoLabel}"/>
+                                            <TextBlock Grid.Column="1" Style="{StaticResource InfoValue}">
+                                                <Run Text="{Binding Model}"/>
+                                                <Run Text="  "/>
+                                                <Run Text="{Binding Size}" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                            </TextBlock>
+                                            <TextBlock Grid.Row="1" Text="健康度" Style="{StaticResource InfoLabel}" Margin="0,4,0,0"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding HealthText}" Style="{StaticResource InfoValue}" Margin="0,4,0,0"/>
+                                            <TextBlock Grid.Row="2" Text="温度" Style="{StaticResource InfoLabel}" Margin="0,4,0,0"/>
+                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding TempText}" Style="{StaticResource InfoValue}" Margin="0,4,0,0"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </StackPanel>
                 </Border>
             </StackPanel>

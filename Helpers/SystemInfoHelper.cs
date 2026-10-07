@@ -45,7 +45,7 @@ public static class SystemInfoHelper
                         IsCpuEnabled = true,
                         IsGpuEnabled = true,
                         IsMemoryEnabled = false,
-                        IsStorageEnabled = false,
+                        IsStorageEnabled = true,
                         IsMotherboardEnabled = true,
                         IsNetworkEnabled = false,
                         IsBatteryEnabled = false,
@@ -858,6 +858,150 @@ public static class SystemInfoHelper
             LogService.Instance.Warning("[SystemInfoHelper.GetTotalDiskUsage] 执行失败", ex);
         }
         return "未知";
+    }
+
+    /// <summary>CPU 整包功耗（RAPL），单位瓦。读不到返回 0。</summary>
+    public static double GetCpuPower()
+    {
+        lock (_lock)
+        {
+            try
+            {
+                var computer = GetComputer();
+                foreach (var hardware in computer.Hardware)
+                {
+                    if (hardware.HardwareType != HardwareType.Cpu) continue;
+                    hardware.Update();
+                    foreach (var sensor in hardware.Sensors)
+                    {
+                        if (sensor.SensorType != SensorType.Power || !sensor.Value.HasValue)
+                            continue;
+                        var name = sensor.Name?.ToLower() ?? "";
+                        if (name.Contains("package"))
+                            return sensor.Value.Value;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.Instance.Warning("[SystemInfoHelper.GetCpuPower] 执行失败", ex);
+            }
+            return 0;
+        }
+    }
+
+    /// <summary>硬盘详情（WMI 型号/容量 + LHM 健康度/温度），WMI 部分只查一次并缓存。</summary>
+    public class DiskDriveDetail
+    {
+        public string Model { get; set; } = "未知";
+        public string Size { get; set; } = "";
+        public double? HealthPercent { get; set; }
+        public double? Temperature { get; set; }
+        public string HealthText => HealthPercent.HasValue ? $"{HealthPercent.Value:F0}%" : "--";
+        public string TempText => Temperature.HasValue ? $"{Temperature.Value:F0}°C" : "--";
+    }
+
+    private static List<DiskDriveDetail>? _cachedDiskDrives;
+
+    public static List<DiskDriveDetail> GetDiskDrives()
+    {
+        if (_cachedDiskDrives != null) return _cachedDiskDrives;
+        var result = new List<DiskDriveDetail>();
+        try
+        {
+            using var searcher = new System.Management.ManagementObjectSearcher(
+                "SELECT Model, Size, MediaType FROM Win32_DiskDrive");
+            foreach (var obj in searcher.Get())
+            {
+                var mediaType = obj["MediaType"]?.ToString() ?? "";
+                if (!mediaType.Contains("Fixed") && !mediaType.Contains("SSD") && !string.IsNullOrEmpty(mediaType))
+                    continue;
+                var model = obj["Model"]?.ToString()?.Trim();
+                if (string.IsNullOrEmpty(model)) continue;
+                var size = obj["Size"];
+                result.Add(new DiskDriveDetail
+                {
+                    Model = model,
+                    Size = size != null ? $"{Convert.ToUInt64(size) / 1024.0 / 1024.0 / 1024.0:F0} GB" : ""
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            LogService.Instance.Warning("[SystemInfoHelper.GetDiskDrives] 执行失败", ex);
+        }
+        _cachedDiskDrives = result;
+        UpdateDiskDriveSensors(result);
+        return result;
+    }
+
+    /// <summary>刷新硬盘健康度与温度（只走 LHM，不查 WMI，可频繁调用）。按名字模糊匹配，匹配不上时按顺序兜底。</summary>
+    public static void UpdateDiskDriveSensors(List<DiskDriveDetail> drives)
+    {
+        if (drives == null || drives.Count == 0) return;
+        lock (_lock)
+        {
+            try
+            {
+                var computer = GetComputer();
+                var storages = new List<(string name, double? health, double? temp)>();
+                foreach (var hardware in computer.Hardware)
+                {
+                    if (hardware.HardwareType != HardwareType.Storage) continue;
+                    hardware.Update();
+                    double? health = null;
+                    double? temp = null;
+                    foreach (var sensor in hardware.Sensors)
+                    {
+                        if (!sensor.Value.HasValue) continue;
+                        if (sensor.SensorType == SensorType.Temperature)
+                        {
+                            var v = sensor.Value.Value;
+                            if (v > 0 && v < 120 && (!temp.HasValue || v > temp.Value))
+                                temp = v;
+                        }
+                        else if (sensor.SensorType == SensorType.Level)
+                        {
+                            var sname = sensor.Name?.ToLower() ?? "";
+                            if (sname.Contains("life") || sname.Contains("health") || sname.Contains("wear"))
+                            {
+                                var v = sensor.Value.Value;
+                                if (v >= 0 && v <= 100) health = v;
+                            }
+                        }
+                    }
+                    storages.Add((hardware.Name ?? "", health, temp));
+                }
+
+                for (int i = 0; i < drives.Count; i++)
+                {
+                    var d = drives[i];
+                    var normModel = d.Model.Replace(" ", "").ToLower();
+                    (string name, double? health, double? temp)? match = null;
+                    foreach (var s in storages)
+                    {
+                        var normName = s.name.Replace(" ", "").ToLower();
+                        if (normName.Contains(normModel) || normModel.Contains(normName))
+                        {
+                            match = s;
+                            break;
+                        }
+                    }
+                    // 名字匹配不上但数量一致时按顺序兜底
+                    if (!match.HasValue && storages.Count == drives.Count)
+                        match = storages[i];
+                    if (match.HasValue)
+                    {
+                        d.HealthPercent = match.Value.health;
+                        d.Temperature = match.Value.temp;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.Instance.Warning("[SystemInfoHelper.UpdateDiskDriveSensors] 执行失败", ex);
+            }
+        }
     }
 
     public static string GetMotherboardName()

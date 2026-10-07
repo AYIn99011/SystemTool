@@ -11,6 +11,8 @@ public partial class DeviceInfoPage : Page
     private DispatcherTimer? _refreshTimer;
     private bool _isStaticInfoLoaded = false;
     private bool _isLoading = false;
+    private readonly object _diskRefreshLock = new();
+    private int _diskRefreshTick = 0;
 
     public DeviceInfoPage()
     {
@@ -93,6 +95,11 @@ public partial class DeviceInfoPage : Page
                     DiskTotalText.Text = SystemInfoHelper.GetTotalDiskSize();
                     LogService.Instance.Info($"存储: {DiskTotalText.Text}");
 
+                    var diskDrives = SystemInfoHelper.GetDiskDrives();
+                    DiskDrivesList.ItemsSource = diskDrives;
+                    foreach (var d in diskDrives)
+                        LogService.Instance.Info($"硬盘: {d.Model} {d.Size} 健康度{d.HealthText}");
+
                     MotherboardText.Text = SystemInfoHelper.GetMotherboardName();
                     BiosText.Text = SystemInfoHelper.GetBiosVersion();
 
@@ -125,6 +132,7 @@ public partial class DeviceInfoPage : Page
         {
             double cpuUsage = 0;
             double cpuTemp = 0;
+            double cpuPower = 0;
             string memoryUsed = "";
             string memoryTotal = "";
             double memoryUsage = 0;
@@ -135,11 +143,26 @@ public partial class DeviceInfoPage : Page
             System.Threading.Tasks.Parallel.Invoke(
                 () => cpuUsage = SystemInfoHelper.GetCpuUsagePercent(),
                 () => cpuTemp = SystemInfoHelper.GetCpuTemperature(),
+                () => cpuPower = SystemInfoHelper.GetCpuPower(),
                 () => { memoryUsed = SystemInfoHelper.GetUsedMemory(); memoryTotal = SystemInfoHelper.GetTotalMemory(); memoryUsage = SystemInfoHelper.GetMemoryUsagePercent(); },
                 () => gpuMemoryUsage = SystemInfoHelper.GetGpuMemoryUsagePercent(),
                 () => gpuTemp = SystemInfoHelper.GetGpuTemperature(),
                 () => diskUsage = SystemInfoHelper.GetTotalDiskUsage()
             );
+
+            // 硬盘健康度/温度变化慢，约每 10 秒刷新一次即可
+            bool refreshDiskSensors = false;
+            lock (_diskRefreshLock)
+            {
+                _diskRefreshTick++;
+                if (_diskRefreshTick >= 10)
+                {
+                    _diskRefreshTick = 0;
+                    refreshDiskSensors = true;
+                }
+            }
+            if (refreshDiskSensors)
+                SystemInfoHelper.UpdateDiskDriveSensors(SystemInfoHelper.GetDiskDrives());
 
             Dispatcher.BeginInvoke(() =>
             {
@@ -151,6 +174,8 @@ public partial class DeviceInfoPage : Page
 
                     CpuTempText.Text = cpuTemp > 0 ? $"{cpuTemp:F0}°C" : "--°C";
                     UpdateTempColor(CpuTempText, cpuTemp);
+
+                    CpuPowerText.Text = cpuPower > 0 ? $"{cpuPower:F1} W" : "-- W";
 
                     MemoryUsageText.Text = $"{memoryUsage:F0}%";
                     MemoryUsedText.Text = $"{memoryUsed} / {memoryTotal}";
@@ -165,6 +190,14 @@ public partial class DeviceInfoPage : Page
                     UpdateTempColor(GpuTempText, gpuTemp);
 
                     DiskUsageText.Text = diskUsage;
+
+                    if (refreshDiskSensors)
+                    {
+                        // 重新绑定以刷新健康度/温度显示
+                        var src = DiskDrivesList.ItemsSource;
+                        DiskDrivesList.ItemsSource = null;
+                        DiskDrivesList.ItemsSource = src;
+                    }
                 }
                 catch (Exception ex)
                 {
