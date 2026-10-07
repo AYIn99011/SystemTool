@@ -28,29 +28,12 @@ jobs:
       - name: Restore & Build (Release, win-x64)
         run: dotnet build -c Release -r win-x64 --self-contained false --no-incremental
 
-      - name: Install Obfuscar
-        run: dotnet tool install -g Obfuscar.GlobalTool
-
-      - name: Obfuscate
-        run: obfuscar.console obfuscar.xml
-
       - name: Publish single file
         run: >
           dotnet publish -c Release -r win-x64 --self-contained false
           -p:PublishSingleFile=true -p:SelfContained=false -p:PublishSelfContained=false
           -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=false
           -p:DebugType=none -p:DebugSymbols=false --no-build
-
-      - name: Replace with obfuscated DLL
-        run: |
-          $publishPath = "bin\Release\net10.0-windows\win-x64\publish"
-          $obfuscatedDll = "bin\Release\net10.0-windows\obfuscated\系统工具箱.dll"
-          if (Test-Path $obfuscatedDll) {
-            Copy-Item -Path $obfuscatedDll -Destination "$publishPath\系统工具箱.dll" -Force
-            Write-Host "Obfuscated DLL copied."
-          } else {
-            Write-Host "WARNING: obfuscated DLL not found, using original." -ForegroundColor Yellow
-          }
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
