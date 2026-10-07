@@ -32,7 +32,7 @@
                 </TextBlock>
                 <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,10,0,0"
                            Foreground="{StaticResource TextTertiaryBrush}" LineHeight="20">
-                    <Run Text="点击“安装驱动”后将自动完成：从官方 GitHub 下载安装包（约 3.4MB）→ 校验哈希与数字签名 → 静默安装。"/>
+                    <Run Text="点击“安装驱动”后将自动完成：使用程序内置的安装包（约 3.4MB，仍会校验哈希与数字签名）→ 静默安装。如内置包缺失才会从官方 GitHub 下载。"/>
                     <LineBreak/>
                     <Run Text="安装可能需要重启电脑才能生效。全程不会安装其他软件。"/>
                 </TextBlock>

@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Security.Cryptography;
@@ -87,13 +87,17 @@ public static class PawnIoDriverService
 
             if (!File.Exists(installerPath) || !CheckSha256(installerPath))
             {
-                progress?.Report("正在下载 PawnIO 驱动安装包（约 3.4MB）…");
-                LogService.Instance.Info("[PawnIoDriverService] 开始下载 PawnIO 安装包");
-                installerPath = await DownloadVerifiedAsync(installerPath, progress, cancellationToken);
+                // 优先使用程序内置的安装包（部分地区 GitHub 访问不稳定）；缺失才回退到下载
+                if (!TryExtractBundledInstaller(installerPath, progress))
+                {
+                    progress?.Report("正在下载 PawnIO 驱动安装包（约 3.4MB）…");
+                    LogService.Instance.Info("[PawnIoDriverService] 开始下载 PawnIO 安装包");
+                    installerPath = await DownloadVerifiedAsync(installerPath, progress, cancellationToken);
+                }
             }
             else
             {
-                LogService.Instance.Info("[PawnIoDriverService] 本地已有校验通过的安装包，跳过下载");
+                LogService.Instance.Info("[PawnIoDriverService] 本地已有校验通过的安装包，跳过解包/下载");
             }
 
             progress?.Report("正在校验数字签名…");
@@ -134,6 +138,39 @@ public static class PawnIoDriverService
         {
             LogService.Instance.Warning("[PawnIoDriverService] 安装过程异常", ex);
             return (InstallResult.Failed, $"安装过程出错：{ex.Message}");
+        }
+    }
+
+    /// <summary>从程序内嵌资源解包安装包（GEEK.exe 同款模式），并校验哈希。</summary>
+    private static bool TryExtractBundledInstaller(string destPath, IProgress<string>? progress)
+    {
+        try
+        {
+            var assembly = typeof(PawnIoDriverService).Assembly;
+            using var stream = assembly.GetManifestResourceStream("PawnIO_setup.exe");
+            if (stream == null)
+            {
+                LogService.Instance.Info("[PawnIoDriverService] 未找到内置安装包资源，回退到下载");
+                return false;
+            }
+            progress?.Report("正在解包内置驱动安装包…");
+            using (var file = File.Create(destPath))
+            {
+                stream.CopyTo(file);
+            }
+            if (!CheckSha256(destPath))
+            {
+                LogService.Instance.Warning("[PawnIoDriverService] 内置安装包哈希校验未通过，回退到下载");
+                try { File.Delete(destPath); } catch { }
+                return false;
+            }
+            LogService.Instance.Info("[PawnIoDriverService] 内置安装包解包并校验通过");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogService.Instance.Warning("[PawnIoDriverService] 解包内置安装包失败，回退到下载", ex);
+            return false;
         }
     }
 

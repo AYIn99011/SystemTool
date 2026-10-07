@@ -40,6 +40,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="PawnIO_setup.exe">
+      <LogicalName>PawnIO_setup.exe</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
     <Resource Include="icon\1.ico" />
   </ItemGroup>
 
