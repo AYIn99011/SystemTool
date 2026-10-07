@@ -15,474 +15,317 @@
                 <!-- 页头 -->
                 <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
                         BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
-                        Padding="20,16" Margin="0,0,0,16">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource AccentSoftBrush}">
-                            <Viewbox Width="20" Height="20">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="{StaticResource AccentBrush}" Data="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Border>
-                        <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="系统优化" FontSize="16" FontWeight="SemiBold"
-                                       Foreground="{StaticResource TextPrimaryBrush}"/>
-                            <TextBlock Text="共 16 项优化 · 调整系统性能与外观" FontSize="12"
-                                       Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
-                        </StackPanel>
+                        Padding="22,18" Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock Text="系统优化" FontSize="16" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                        <TextBlock Text="共 16 项优化 · 调整系统性能与外观" FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
                     </StackPanel>
                 </Border>
 
                 <!-- ============ 性能优化 ============ -->
                 <TextBlock Text="性能优化" Style="{StaticResource SectionTitle}" Margin="4,4,0,10"/>
+                <UniformGrid Columns="2" Margin="-6,0,-6,8">
 
-                <!-- 内存优化 -->
-                <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
-                        BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
-                        Padding="16,14" Margin="0,0,0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource AccentSoftBrush}">
-                            <Viewbox Width="20" Height="20">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#e94560" Data="M13,2.05V5.08C16.39,5.56 19,8.5 19,12C19,15.5 16.39,18.44 13,18.92V21.95C18.05,21.45 22,17.19 22,12C22,6.81 18.05,2.55 13,2.05M12,19A7,7 0 0,1 5,12A7,7 0 0,1 12,5C12.34,5 12.67,5.03 13,5.08V2.05C12.67,2.02 12.34,2 12,2C6.48,2 2,6.48 2,12C2,17.52 6.48,22 12,22C12.34,22 12.67,21.98 13,21.95V18.92C12.67,18.97 12.34,19 12,19Z"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Border>
-                        <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center">
-                            <TextBlock Text="内存优化" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
-                            <TextBlock Text="释放内存空间，提升系统响应速度" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <Button Grid.Column="2" Content="优化内存" Style="{StaticResource AccentButton}"
-                                Click="OptimizeMemory_Click" VerticalAlignment="Center" Cursor="Hand"/>
-                    </Grid>
-                </Border>
+                    <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
+                            BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                            Padding="18" Margin="6">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="内存优化" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Grid.Row="1" Text="释放内存空间，提升系统响应速度" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal">
+                                <Button Content="优化内存" Style="{StaticResource AccentButton}" Click="OptimizeMemory_Click" Cursor="Hand"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
 
-                <!-- 大系统缓存 -->
-                <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
-                        BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
-                        Padding="16,14" Margin="0,0,0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource AccentSoftBrush}">
-                            <Viewbox Width="20" Height="20">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#fbbf24" Data="M13,2.05V5.08C16.39,5.56 19,8.5 19,12C19,15.5 16.39,18.44 13,18.92V21.95C18.05,21.45 22,17.19 22,12C22,6.81 18.05,2.55 13,2.05M12,19A7,7 0 0,1 5,12A7,7 0 0,1 12,5C12.34,5 12.67,5.03 13,5.08V2.05C12.67,2.02 12.34,2 12,2C6.48,2 2,6.48 2,12C2,17.52 6.48,22 12,22C12.34,22 12.67,21.98 13,21.95V18.92C12.67,18.97 12.34,19 12,19Z"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Border>
-                        <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center">
-                            <TextBlock Text="大系统缓存" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
-                            <TextBlock Text="启用大系统缓存以提高系统性能（需 1GB 以上内存）" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button Content="启用" Style="{StaticResource AccentButton}" Click="EnableLargeSystemCache_Click" Cursor="Hand"/>
-                            <Button Content="禁用" Style="{StaticResource FluentButton}" Click="DisableLargeSystemCache_Click" Margin="8,0,0,0" Cursor="Hand"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
+                    <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
+                            BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                            Padding="18" Margin="6">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="大系统缓存" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Grid.Row="1" Text="启用大系统缓存以提高系统性能（需 1GB 以上内存）" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal">
+                                <Button Content="启用" Style="{StaticResource AccentButton}" Click="EnableLargeSystemCache_Click" Cursor="Hand"/>
+                                <Button Content="禁用" Style="{StaticResource FluentButton}" Click="DisableLargeSystemCache_Click" Margin="8,0,0,0" Cursor="Hand"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
 
-                <!-- 文件系统缓存 -->
-                <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
-                        BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
-                        Padding="16,14" Margin="0,0,0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource AccentSoftBrush}">
-                            <Viewbox Width="20" Height="20">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#22d3ee" Data="M13,2.05V5.08C16.39,5.56 19,8.5 19,12C19,15.5 16.39,18.44 13,18.92V21.95C18.05,21.45 22,17.19 22,12C22,6.81 18.05,2.55 13,2.05M12,19A7,7 0 0,1 5,12A7,7 0 0,1 12,5C12.34,5 12.67,5.03 13,5.08V2.05C12.67,2.02 12.34,2 12,2C6.48,2 2,6.48 2,12C2,17.52 6.48,22 12,22C12.34,22 12.67,21.98 13,21.95V18.92C12.67,18.97 12.34,19 12,19Z"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Border>
-                        <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center">
-                            <TextBlock Text="文件系统缓存" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
-                            <TextBlock Text="将文件系统缓存增加至 256MB（需 2GB 以上内存）" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button Content="启用" Style="{StaticResource AccentButton}" Click="EnableIoPageLock_Click" Cursor="Hand"/>
-                            <Button Content="禁用" Style="{StaticResource FluentButton}" Click="DisableIoPageLock_Click" Margin="8,0,0,0" Cursor="Hand"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
+                    <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
+                            BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                            Padding="18" Margin="6">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="文件系统缓存" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Grid.Row="1" Text="将文件系统缓存增加至 256MB（需 2GB 以上内存）" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal">
+                                <Button Content="启用" Style="{StaticResource AccentButton}" Click="EnableIoPageLock_Click" Cursor="Hand"/>
+                                <Button Content="禁用" Style="{StaticResource FluentButton}" Click="DisableIoPageLock_Click" Margin="8,0,0,0" Cursor="Hand"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
 
-                <!-- 禁止内核分页 -->
-                <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
-                        BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
-                        Padding="16,14" Margin="0,0,0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource AccentSoftBrush}">
-                            <Viewbox Width="20" Height="20">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#f472b6" Data="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M12,6A6,6 0 0,1 18,12A6,6 0 0,1 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6M12,8A4,4 0 0,0 8,12A4,4 0 0,0 12,16A4,4 0 0,0 16,12A4,4 0 0,0 12,8Z"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Border>
-                        <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center">
-                            <TextBlock Text="禁止内核分页" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
-                            <TextBlock Text="禁止系统内核与驱动程序分页到硬盘" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button Content="启用" Style="{StaticResource AccentButton}" Click="EnableDisablePaging_Click" Cursor="Hand"/>
-                            <Button Content="禁用" Style="{StaticResource FluentButton}" Click="DisableDisablePaging_Click" Margin="8,0,0,0" Cursor="Hand"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
+                    <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
+                            BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                            Padding="18" Margin="6">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="禁止内核分页" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Grid.Row="1" Text="禁止系统内核与驱动程序分页到硬盘" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal">
+                                <Button Content="启用" Style="{StaticResource AccentButton}" Click="EnableDisablePaging_Click" Cursor="Hand"/>
+                                <Button Content="禁用" Style="{StaticResource FluentButton}" Click="DisableDisablePaging_Click" Margin="8,0,0,0" Cursor="Hand"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
 
-                <!-- 卓越性能电源计划 -->
-                <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
-                        BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
-                        Padding="16,14" Margin="0,0,0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource AccentSoftBrush}">
-                            <Viewbox Width="20" Height="20">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#f59e0b" Data="M11 2L13 2L13 7L21 7L21 9L13 9L13 11L19 11L19 13L13 13L13 15L17 15L17 17L13 17L13 20L11 20L11 17L7 17L7 15L11 15L11 13L5 13L5 11L11 11L11 9L3 9L3 7L11 7L11 2Z"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Border>
-                        <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center">
-                            <TextBlock Text="卓越性能电源计划" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
-                            <TextBlock Text="启用 Windows 隐藏的卓越性能电源计划，提升系统响应速度" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button Content="启用卓越性能" Style="{StaticResource AccentButton}" Click="EnableUltimatePerformance_Click" Cursor="Hand"/>
-                            <Button Content="恢复平衡模式" Style="{StaticResource FluentButton}" Click="RestoreBalancedPowerPlan_Click" Margin="8,0,0,0" Cursor="Hand"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
+                    <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
+                            BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                            Padding="18" Margin="6">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="卓越性能电源计划" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Grid.Row="1" Text="启用 Windows 隐藏的卓越性能电源计划，提升系统响应速度" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal">
+                                <Button Content="启用卓越性能" Style="{StaticResource AccentButton}" Click="EnableUltimatePerformance_Click" Cursor="Hand"/>
+                                <Button Content="恢复平衡模式" Style="{StaticResource FluentButton}" Click="RestoreBalancedPowerPlan_Click" Margin="8,0,0,0" Cursor="Hand"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
 
-                <!-- VBS与内核隔离 -->
-                <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
-                        BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
-                        Padding="16,14" Margin="0,0,0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource AccentSoftBrush}">
-                            <Viewbox Width="20" Height="20">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#22c55e" Data="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,5A3,3 0 0,1 15,8A3,3 0 0,1 12,11A3,3 0 0,1 9,8A3,3 0 0,1 12,5M17.13,17C15.92,18.85 14.11,20.24 12,20.92C9.89,20.24 8.08,18.85 6.87,17C6.53,16.5 6.24,16 6,15.47C6,13.82 8.71,12.47 12,12.47C15.29,12.47 18,13.79 18,15.47C17.76,16 17.47,16.5 17.13,17Z"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Border>
-                        <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center">
-                            <TextBlock Text="VBS 与内核隔离" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
-                            <TextBlock Text="关闭 VBS 和内核完整性可提升游戏性能（需重启生效）" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button Content="关闭 VBS" Style="{StaticResource AccentButton}" Click="DisableVBS_Click" Cursor="Hand"/>
-                            <Button Content="开启 VBS" Style="{StaticResource FluentButton}" Click="EnableVBS_Click" Margin="8,0,0,0" Cursor="Hand"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
+                    <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
+                            BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                            Padding="18" Margin="6">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="VBS 与内核隔离" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Grid.Row="1" Text="关闭 VBS 和内核完整性可提升游戏性能（需重启生效）" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal">
+                                <Button Content="关闭 VBS" Style="{StaticResource AccentButton}" Click="DisableVBS_Click" Cursor="Hand"/>
+                                <Button Content="开启 VBS" Style="{StaticResource FluentButton}" Click="EnableVBS_Click" Margin="8,0,0,0" Cursor="Hand"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
 
-                <!-- 快速启动 -->
-                <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
-                        BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
-                        Padding="16,14" Margin="0,0,0,16">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource AccentSoftBrush}">
-                            <Viewbox Width="20" Height="20">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#f97316" Data="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12.5,7H11V13L16.2,16.2L17,14.9L12.5,12.2V7Z"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Border>
-                        <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center">
-                            <TextBlock Text="快速启动" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
-                            <TextBlock Text="关闭快速启动可避免某些兼容性问题" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button Content="关闭快速启动" Style="{StaticResource AccentButton}" Click="DisableFastStartup_Click" Cursor="Hand"/>
-                            <Button Content="开启快速启动" Style="{StaticResource FluentButton}" Click="EnableFastStartup_Click" Margin="8,0,0,0" Cursor="Hand"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
+                    <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
+                            BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                            Padding="18" Margin="6">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="快速启动" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Grid.Row="1" Text="关闭快速启动可避免某些兼容性问题" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal">
+                                <Button Content="关闭快速启动" Style="{StaticResource AccentButton}" Click="DisableFastStartup_Click" Cursor="Hand"/>
+                                <Button Content="开启快速启动" Style="{StaticResource FluentButton}" Click="EnableFastStartup_Click" Margin="8,0,0,0" Cursor="Hand"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                </UniformGrid>
 
                 <!-- ============ 外观与体验 ============ -->
                 <TextBlock Text="外观与体验" Style="{StaticResource SectionTitle}" Margin="4,4,0,10"/>
+                <UniformGrid Columns="2" Margin="-6,0,-6,8">
 
-                <!-- Win11经典右键菜单 -->
-                <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
-                        BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
-                        Padding="16,14" Margin="0,0,0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource AccentSoftBrush}">
-                            <Viewbox Width="20" Height="20">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#8b5cf6" Data="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M11,17H13V15H11V17M11,13H13V7H11V13Z"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Border>
-                        <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center">
-                            <TextBlock Text="Win11 经典右键菜单" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
-                            <TextBlock Text="将 Win11 右键菜单恢复为 Win10 经典样式" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button Content="恢复经典" Style="{StaticResource AccentButton}" Click="EnableClassicContextMenu_Click" Cursor="Hand"/>
-                            <Button Content="恢复默认" Style="{StaticResource FluentButton}" Click="DisableClassicContextMenu_Click" Margin="8,0,0,0" Cursor="Hand"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
+                    <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
+                            BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                            Padding="18" Margin="6">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="Win11 经典右键菜单" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Grid.Row="1" Text="将 Win11 右键菜单恢复为 Win10 经典样式" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal">
+                                <Button Content="恢复经典" Style="{StaticResource AccentButton}" Click="EnableClassicContextMenu_Click" Cursor="Hand"/>
+                                <Button Content="恢复默认" Style="{StaticResource FluentButton}" Click="DisableClassicContextMenu_Click" Margin="8,0,0,0" Cursor="Hand"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
 
-                <!-- Win11经典资源管理器 -->
-                <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
-                        BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
-                        Padding="16,14" Margin="0,0,0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource AccentSoftBrush}">
-                            <Viewbox Width="20" Height="20">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#06b6d4" Data="M3,3H21C22.1,3 23,3.9 23,5V19C23,20.1 22.1,21 21,21H3C1.9,21 1,20.1 1,19V5C1,3.9 1.9,3 3,3M3,5V19H21V5H3M5,7H19V9H5V7M5,11H19V13H5V11M5,15H14V17H5V15Z"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Border>
-                        <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center">
-                            <TextBlock Text="Win11 经典资源管理器" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
-                            <TextBlock Text="将 Win11 资源管理器恢复为 Win10 经典样式" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button Content="恢复经典" Style="{StaticResource AccentButton}" Click="EnableClassicExplorer_Click" Cursor="Hand"/>
-                            <Button Content="恢复默认" Style="{StaticResource FluentButton}" Click="DisableClassicExplorer_Click" Margin="8,0,0,0" Cursor="Hand"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
+                    <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
+                            BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                            Padding="18" Margin="6">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="Win11 经典资源管理器" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Grid.Row="1" Text="将 Win11 资源管理器恢复为 Win10 经典样式" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal">
+                                <Button Content="恢复经典" Style="{StaticResource AccentButton}" Click="EnableClassicExplorer_Click" Cursor="Hand"/>
+                                <Button Content="恢复默认" Style="{StaticResource FluentButton}" Click="DisableClassicExplorer_Click" Margin="8,0,0,0" Cursor="Hand"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
 
-                <!-- 快捷方式小箭头 -->
-                <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
-                        BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
-                        Padding="16,14" Margin="0,0,0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource AccentSoftBrush}">
-                            <Viewbox Width="20" Height="20">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#10b981" Data="M3,7V13A2,2 0 0,0 5,15H9V13H5V7H3M9,13V15H15V13H9M15,13H19V7H21V13A2,2 0 0,1 19,15H15V13M5,7H9V5H5V7M9,7H15V5H9V7M15,7H19V5H15V7M9,5V7H15V5H9Z"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Border>
-                        <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center">
-                            <TextBlock Text="快捷方式小箭头" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
-                            <TextBlock Text="隐藏或恢复快捷方式左下角的小箭头图标" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button Content="隐藏箭头" Style="{StaticResource AccentButton}" Click="HideShortcutArrow_Click" Cursor="Hand"/>
-                            <Button Content="恢复箭头" Style="{StaticResource FluentButton}" Click="ShowShortcutArrow_Click" Margin="8,0,0,0" Cursor="Hand"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
+                    <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
+                            BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                            Padding="18" Margin="6">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="快捷方式小箭头" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Grid.Row="1" Text="隐藏或恢复快捷方式左下角的小箭头图标" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal">
+                                <Button Content="隐藏箭头" Style="{StaticResource AccentButton}" Click="HideShortcutArrow_Click" Cursor="Hand"/>
+                                <Button Content="恢复箭头" Style="{StaticResource FluentButton}" Click="ShowShortcutArrow_Click" Margin="8,0,0,0" Cursor="Hand"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
 
-                <!-- 可执行文件小盾牌 -->
-                <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
-                        BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
-                        Padding="16,14" Margin="0,0,0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource AccentSoftBrush}">
-                            <Viewbox Width="20" Height="20">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#fb923c" Data="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,5A3,3 0 0,1 15,8A3,3 0 0,1 12,11A3,3 0 0,1 9,8A3,3 0 0,1 12,5M17.13,17C15.92,18.85 14.11,20.24 12,20.92C9.89,20.24 8.08,18.85 6.87,17C6.53,16.5 6.24,16 6,15.47C6,13.82 8.71,12.47 12,12.47C15.29,12.47 18,13.79 18,15.47C17.76,16 17.47,16.5 17.13,17Z"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Border>
-                        <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center">
-                            <TextBlock Text="可执行文件小盾牌" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
-                            <TextBlock Text="隐藏或恢复可执行文件左下角的 UAC 盾牌图标" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button Content="隐藏盾牌" Style="{StaticResource AccentButton}" Click="HideUacShield_Click" Cursor="Hand"/>
-                            <Button Content="恢复盾牌" Style="{StaticResource FluentButton}" Click="ShowUacShield_Click" Margin="8,0,0,0" Cursor="Hand"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
+                    <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
+                            BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                            Padding="18" Margin="6">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="可执行文件小盾牌" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Grid.Row="1" Text="隐藏或恢复可执行文件左下角的 UAC 盾牌图标" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal">
+                                <Button Content="隐藏盾牌" Style="{StaticResource AccentButton}" Click="HideUacShield_Click" Cursor="Hand"/>
+                                <Button Content="恢复盾牌" Style="{StaticResource FluentButton}" Click="ShowUacShield_Click" Margin="8,0,0,0" Cursor="Hand"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
 
-                <!-- 显示隐藏文件 -->
-                <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
-                        BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
-                        Padding="16,14" Margin="0,0,0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource AccentSoftBrush}">
-                            <Viewbox Width="20" Height="20">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#a78bfa" Data="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Border>
-                        <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center">
-                            <TextBlock Text="显示隐藏文件" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
-                            <TextBlock Text="显示或隐藏系统中的隐藏文件和文件夹" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button Content="显示隐藏" Style="{StaticResource AccentButton}" Click="ShowHiddenFiles_Click" Cursor="Hand"/>
-                            <Button Content="隐藏文件" Style="{StaticResource FluentButton}" Click="HideHiddenFiles_Click" Margin="8,0,0,0" Cursor="Hand"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
+                    <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
+                            BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                            Padding="18" Margin="6">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="显示隐藏文件" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Grid.Row="1" Text="显示或隐藏系统中的隐藏文件和文件夹" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal">
+                                <Button Content="显示隐藏" Style="{StaticResource AccentButton}" Click="ShowHiddenFiles_Click" Cursor="Hand"/>
+                                <Button Content="隐藏文件" Style="{StaticResource FluentButton}" Click="HideHiddenFiles_Click" Margin="8,0,0,0" Cursor="Hand"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
 
-                <!-- 任务栏时钟秒数 -->
-                <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
-                        BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
-                        Padding="16,14" Margin="0,0,0,16">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource AccentSoftBrush}">
-                            <Viewbox Width="20" Height="20">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#38bdf8" Data="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12.5,7H11V13L16.2,16.2L17,14.9L12.5,12.2V7Z"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Border>
-                        <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center">
-                            <TextBlock Text="任务栏时钟秒数" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
-                            <TextBlock Text="在任务栏时钟中显示或隐藏秒数" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button Content="显示秒数" Style="{StaticResource AccentButton}" Click="ShowClockSeconds_Click" Cursor="Hand"/>
-                            <Button Content="隐藏秒数" Style="{StaticResource FluentButton}" Click="HideClockSeconds_Click" Margin="8,0,0,0" Cursor="Hand"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
+                    <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
+                            BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                            Padding="18" Margin="6">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="任务栏时钟秒数" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Grid.Row="1" Text="在任务栏时钟中显示或隐藏秒数" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal">
+                                <Button Content="显示秒数" Style="{StaticResource AccentButton}" Click="ShowClockSeconds_Click" Cursor="Hand"/>
+                                <Button Content="隐藏秒数" Style="{StaticResource FluentButton}" Click="HideClockSeconds_Click" Margin="8,0,0,0" Cursor="Hand"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                </UniformGrid>
 
                 <!-- ============ 系统功能 ============ -->
                 <TextBlock Text="系统功能" Style="{StaticResource SectionTitle}" Margin="4,4,0,10"/>
+                <UniformGrid Columns="2" Margin="-6,0,-6,8">
 
-                <!-- 激活Windows -->
-                <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
-                        BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
-                        Padding="16,14" Margin="0,0,0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource AccentSoftBrush}">
-                            <Viewbox Width="20" Height="20">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#22c55e" Data="M10,17L5,12L6.41,10.58L10,14.17L17.59,6.58L19,8M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Border>
-                        <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center">
-                            <TextBlock Text="激活 Windows" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
-                            <TextBlock Text="使用 Microsoft Activation Scripts 激活 Windows 系统" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <Button Grid.Column="2" Content="激活 Windows" Style="{StaticResource AccentButton}"
-                                Click="ActivateWindows_Click" VerticalAlignment="Center" Cursor="Hand"/>
-                    </Grid>
-                </Border>
+                    <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
+                            BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                            Padding="18" Margin="6">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="激活 Windows" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Grid.Row="1" Text="使用 Microsoft Activation Scripts 激活 Windows 系统" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal">
+                                <Button Content="激活 Windows" Style="{StaticResource AccentButton}" Click="ActivateWindows_Click" Cursor="Hand"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
 
-                <!-- 暂停Windows更新 -->
-                <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
-                        BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
-                        Padding="16,14" Margin="0,0,0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource AccentSoftBrush}">
-                            <Viewbox Width="20" Height="20">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#34d399" Data="M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4 20 7.59 20 12 16.41 20 12 20M12.5 7H11V13L16.2 16.2L17 14.9L12.5 12.2V7Z"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Border>
-                        <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center">
-                            <TextBlock Text="暂停 Windows 更新" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
-                            <TextBlock Text="暂停系统自动更新到 2052 年" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <Button Grid.Column="2" Content="暂停更新" Style="{StaticResource AccentButton}"
-                                Click="PauseWindowsUpdate_Click" VerticalAlignment="Center" Cursor="Hand"/>
-                    </Grid>
-                </Border>
+                    <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
+                            BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                            Padding="18" Margin="6">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="暂停 Windows 更新" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Grid.Row="1" Text="暂停系统自动更新到 2052 年" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal">
+                                <Button Content="暂停更新" Style="{StaticResource AccentButton}" Click="PauseWindowsUpdate_Click" Cursor="Hand"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
 
-                <!-- 禁用系统日志 -->
-                <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
-                        BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
-                        Padding="16,14" Margin="0,0,0,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <Border Width="40" Height="40" CornerRadius="10" Background="{StaticResource AccentSoftBrush}">
-                            <Viewbox Width="20" Height="20">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#ef4444" Data="M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/>
-                                </Canvas>
-                            </Viewbox>
-                        </Border>
-                        <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center">
-                            <TextBlock Text="禁用系统日志" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
-                            <TextBlock Text="禁用组件堆栈、更新解压、登录报告、网络事件等日志" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button Content="禁用日志" Style="{StaticResource AccentButton}" Click="DisableSystemLogs_Click" Cursor="Hand"/>
-                            <Button Content="恢复日志" Style="{StaticResource FluentButton}" Click="EnableSystemLogs_Click" Margin="8,0,0,0" Cursor="Hand"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
+                    <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
+                            BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                            Padding="18" Margin="6">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="禁用系统日志" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Grid.Row="1" Text="禁用组件堆栈、更新解压、登录报告、网络事件等日志" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal">
+                                <Button Content="禁用日志" Style="{StaticResource AccentButton}" Click="DisableSystemLogs_Click" Cursor="Hand"/>
+                                <Button Content="恢复日志" Style="{StaticResource FluentButton}" Click="EnableSystemLogs_Click" Margin="8,0,0,0" Cursor="Hand"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                </UniformGrid>
 
             </StackPanel>
         </ScrollViewer>

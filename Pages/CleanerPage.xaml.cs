@@ -1414,25 +1414,7 @@ namespace SystemTool.Pages
                         }
 
                         var ntQQPath = Path.Combine(userDir, "nt_qq");
-                        if (Directory.Exists(ntQQPath))
-                        {
-                            var ntQQCachePaths = new[]
-                            {
-                                Path.Combine(ntQQPath, "Cache"),
-                                Path.Combine(ntQQPath, "Temp"),
-                                Path.Combine(ntQQPath, "nt_data", "log"),
-                                Path.Combine(ntQQPath, "nt_data", "log-cache"),
-                                Path.Combine(ntQQPath, "nt_temp"),
-                            };
-
-                            foreach (var cachePath in ntQQCachePaths)
-                            {
-                                if (Directory.Exists(cachePath))
-                                {
-                                    paths.Add(cachePath);
-                                }
-                            }
-                        }
+                        ScanNtQQAccountDir(ntQQPath, paths);
                     }
                 }
                 catch (Exception ex)
@@ -1448,6 +1430,8 @@ namespace SystemTool.Pages
                 Path.Combine(appData, "Tencent", "QQ", "Temp"),
                 Path.Combine(appData, "Tencent", "QQ", "Cache"),
                 Path.Combine(localAppData, "Tencent", "QQ", "Misc"),
+                Path.Combine(localAppData, "Tencent", "QQ", "Logs"),
+                Path.Combine(localAppData, "Tencent", "QQ", "WebCache"),
                 Path.Combine(localAppData, "Tencent", "QQ", "Download", "Temp"),
             };
 
@@ -1477,7 +1461,126 @@ namespace SystemTool.Pages
                 }
             }
 
+            // NTQQ 主数据目录（新版 QQ）：%LocalAppData%\Tencent\QQ\nt_qq，其下为各账号目录
+            CollectNtQQDataRoot(Path.Combine(localAppData, "Tencent", "QQ", "nt_qq"), paths);
+
+            // 注册表自定义数据路径（自适应）：HKCU\Software\Tencent\QQNT\PersonalPath|DataPath|PersonalFolder
+            var regNtQQRoot = GetRegistryStringValueHKCU(@"Software\Tencent\QQNT", "PersonalPath", "DataPath", "PersonalFolder");
+            if (!string.IsNullOrEmpty(regNtQQRoot))
+            {
+                CollectNtQQDataRoot(regNtQQRoot, paths);
+            }
+
             return paths;
+        }
+
+        /// <summary>
+        /// 扫描一个 nt_qq 账号目录：Cache/Temp/nt_temp + nt_data 下可重建的子目录。
+        /// 注意：nt_data\{Pic,Video,Ptt,File} 为用户收发的媒体文件，nt_db/nt_msg 为数据库——一律不碰。
+        /// 可安全删除的子目录清单交叉核对自开源清理工具 light-c（Chunyu33/light-c）的 NTQQ 适配器。
+        /// </summary>
+        private void ScanNtQQAccountDir(string accountDir, List<string> paths)
+        {
+            if (string.IsNullOrEmpty(accountDir) || !Directory.Exists(accountDir))
+                return;
+
+            var subPaths = new[]
+            {
+                Path.Combine(accountDir, "Cache"),
+                Path.Combine(accountDir, "Temp"),
+                Path.Combine(accountDir, "nt_temp"),
+                Path.Combine(accountDir, "nt_data", "log"),
+                Path.Combine(accountDir, "nt_data", "log-cache"),
+                Path.Combine(accountDir, "nt_data", "Emoji"),
+                Path.Combine(accountDir, "nt_data", "PokeFace"),
+                Path.Combine(accountDir, "nt_data", "Skin"),
+                Path.Combine(accountDir, "nt_data", "ntnnModel"),
+                Path.Combine(accountDir, "nt_data", "onlineStatus"),
+                Path.Combine(accountDir, "nt_data", "msf"),
+                Path.Combine(accountDir, "nt_data", "Login"),
+                Path.Combine(accountDir, "nt_data", "mmkv"),
+                Path.Combine(accountDir, "nt_data", "search"),
+            };
+
+            foreach (var cachePath in subPaths)
+            {
+                if (Directory.Exists(cachePath) && !paths.Contains(cachePath, StringComparer.OrdinalIgnoreCase))
+                {
+                    paths.Add(cachePath);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 扫描一个 nt_qq 数据根目录：其下为各账号目录（另有 global 全局目录，只含数据库，不碰）。
+        /// 兼容老架构账号目录下再嵌一层 nt_qq 的情况。
+        /// </summary>
+        private void CollectNtQQDataRoot(string ntQQRoot, List<string> paths)
+        {
+            if (string.IsNullOrEmpty(ntQQRoot) || !Directory.Exists(ntQQRoot))
+                return;
+
+            // 注册表给的可能直接就是账号目录（内含 nt_data/nt_db/nt_msg）
+            if (Directory.Exists(Path.Combine(ntQQRoot, "nt_data")) ||
+                Directory.Exists(Path.Combine(ntQQRoot, "nt_db")) ||
+                Directory.Exists(Path.Combine(ntQQRoot, "nt_msg")))
+            {
+                ScanNtQQAccountDir(ntQQRoot, paths);
+                return;
+            }
+
+            try
+            {
+                foreach (var accountDir in Directory.GetDirectories(ntQQRoot))
+                {
+                    var dirName = Path.GetFileName(accountDir);
+                    if (dirName.Equals("global", StringComparison.OrdinalIgnoreCase))
+                        continue; // 全局目录只含 nt_db 等数据库，不碰
+
+                    ScanNtQQAccountDir(accountDir, paths);
+
+                    var nested = Path.Combine(accountDir, "nt_qq");
+                    if (Directory.Exists(nested))
+                        ScanNtQQAccountDir(nested, paths);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.Instance.Warning("[CleanerPage.CollectNtQQDataRoot] 枚举目录失败", ex);
+            }
+        }
+
+        /// <summary>
+        /// 从 HKCU 读取字符串注册表值（依次尝试多个值名，含 Wow6432Node）。
+        /// </summary>
+        private string? GetRegistryStringValueHKCU(string subKey, params string[] valueNames)
+        {
+            try
+            {
+                var stripped = subKey.StartsWith(@"Software\", StringComparison.OrdinalIgnoreCase)
+                    ? subKey.Substring(@"Software\".Length)
+                    : subKey;
+                foreach (var keyPath in new[] { subKey, @"SOFTWARE\Wow6432Node\" + stripped })
+                {
+                    using (var key = Registry.CurrentUser.OpenSubKey(keyPath))
+                    {
+                        if (key == null)
+                            continue;
+                        foreach (var valueName in valueNames)
+                        {
+                            var value = key.GetValue(valueName) as string;
+                            if (!string.IsNullOrEmpty(value))
+                                return value;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.Instance.Warning("[CleanerPage.GetRegistryStringValueHKCU] 执行失败", ex);
+            }
+
+            return null;
         }
 
         private (long Size, int FileCount, int DirCount) CleanQQCacheDirectory(string path)
@@ -1690,6 +1793,19 @@ namespace SystemTool.Pages
                 catch { }
             }
 
+            // 注册表自定义文件存储路径（自适应，解决改到非盘符根目录后扫不到的问题）：
+            // 旧版 3.x: HKCU\Software\Tencent\WeChat\FileSavePath
+            // 新版 4.x: HKCU\Software\Tencent\Weixin\FileSavePath
+            // 值为 "MyDocument:" 时表示使用系统文档目录（已在 roots 中）
+            var directAccountDirs = new List<string>();
+            foreach (var regKey in new[] { @"Software\Tencent\WeChat", @"Software\Tencent\Weixin" })
+            {
+                var regPath = GetRegistryStringValueHKCU(regKey, "FileSavePath");
+                if (string.IsNullOrEmpty(regPath) || regPath.Equals("MyDocument:", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                AddWeChatDataRootCandidate(regPath, roots, directAccountDirs);
+            }
+
             foreach (var weChatFilesPath in roots.Distinct(StringComparer.OrdinalIgnoreCase))
             {
                 if (!Directory.Exists(weChatFilesPath))
@@ -1698,29 +1814,19 @@ namespace SystemTool.Pages
                 {
                     foreach (var userDir in Directory.GetDirectories(weChatFilesPath))
                     {
-                        var dirName = Path.GetFileName(userDir);
-                        if (dirName == "All Users" || dirName == "Applet")
-                            continue;
-
-                        var cacheSubPaths = new[]
-                        {
-                            Path.Combine(userDir, "FileStorage", "Cache"),
-                            Path.Combine(userDir, "FileStorage", "Temp"),
-                        };
-
-                        foreach (var cachePath in cacheSubPaths)
-                        {
-                            if (Directory.Exists(cachePath) && !paths.Contains(cachePath, StringComparer.OrdinalIgnoreCase))
-                            {
-                                paths.Add(cachePath);
-                            }
-                        }
+                        ScanWeChatAccountDir(userDir, paths);
                     }
                 }
                 catch (Exception ex)
                 {
                     LogService.Instance.Warning("[CleanerPage.GetWeChatCachePaths] 枚举目录失败", ex);
                 }
+            }
+
+            // 注册表直接指向账号目录的情况
+            foreach (var accountDir in directAccountDirs.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                ScanWeChatAccountDir(accountDir, paths);
             }
 
             var xwechatLogPath = Path.Combine(appData, "Tencent", "xwechat", "log");
@@ -1742,6 +1848,89 @@ namespace SystemTool.Pages
             }
 
             return paths;
+        }
+
+        /// <summary>
+        /// 把注册表读到的微信自定义路径归一为"数据根"或"账号目录"。
+        /// 注册表值可能是数据根（WeChat Files/xwechat_files）、账号目录，也可能是指向它们的父目录。
+        /// </summary>
+        private void AddWeChatDataRootCandidate(string configuredPath, List<string> roots, List<string> directAccountDirs)
+        {
+            if (string.IsNullOrEmpty(configuredPath) || !Directory.Exists(configuredPath))
+                return;
+
+            // 1. 本身就是账号目录（有 FileStorage 或 db_storage/msg）
+            if (Directory.Exists(Path.Combine(configuredPath, "FileStorage")) ||
+                Directory.Exists(Path.Combine(configuredPath, "db_storage")) ||
+                Directory.Exists(Path.Combine(configuredPath, "msg")))
+            {
+                directAccountDirs.Add(configuredPath);
+                return;
+            }
+
+            // 2. 本身就是数据根（WeChat Files / xwechat_files）
+            var name = Path.GetFileName(configuredPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            if (name.Equals("WeChat Files", StringComparison.OrdinalIgnoreCase) ||
+                name.Equals("xwechat_files", StringComparison.OrdinalIgnoreCase))
+            {
+                roots.Add(configuredPath);
+                return;
+            }
+
+            // 3. 其下可能挂着数据根
+            foreach (var n in new[] { "WeChat Files", "xwechat_files" })
+            {
+                var nested = Path.Combine(configuredPath, n);
+                if (Directory.Exists(nested))
+                {
+                    roots.Add(nested);
+                    return;
+                }
+            }
+
+            // 4. 兜底：当作数据根枚举
+            roots.Add(configuredPath);
+        }
+
+        /// <summary>
+        /// 扫描一个微信账号目录，自动区分 3.x（FileStorage）与 4.x（db_storage/msg/business）布局。
+        /// 注意：db_storage 为聊天数据库、msg\{file,attach,video} 为用户收发的文件、BackupFiles 为备份——一律不碰。
+        /// 4.x 可安全删除的子目录清单交叉核对自开源清理工具 light-c（Chunyu33/light-c）的微信适配器。
+        /// </summary>
+        private void ScanWeChatAccountDir(string accountDir, List<string> paths)
+        {
+            if (string.IsNullOrEmpty(accountDir) || !Directory.Exists(accountDir))
+                return;
+
+            var dirName = Path.GetFileName(accountDir);
+            if (dirName == "All Users" || dirName == "Applet")
+                return;
+
+            void Add(string p)
+            {
+                if (Directory.Exists(p) && !paths.Contains(p, StringComparer.OrdinalIgnoreCase))
+                    paths.Add(p);
+            }
+
+            bool isV4 = Directory.Exists(Path.Combine(accountDir, "db_storage")) ||
+                        Directory.Exists(Path.Combine(accountDir, "msg"));
+
+            if (isV4)
+            {
+                // 新版 4.x 布局
+                Add(Path.Combine(accountDir, "msg", "migrate"));
+                foreach (var n in new[] { "cache", "temp", "apm_record", "resource" })
+                    Add(Path.Combine(accountDir, n));
+                var business = Path.Combine(accountDir, "business");
+                foreach (var n in new[] { "emoticon", "favorite", "xweb", "xeditor", "InputTemp", "migrate", "sns" })
+                    Add(Path.Combine(business, n));
+            }
+            else
+            {
+                // 旧版 3.x 布局
+                Add(Path.Combine(accountDir, "FileStorage", "Cache"));
+                Add(Path.Combine(accountDir, "FileStorage", "Temp"));
+            }
         }
 
         private List<string> GetQQMusicCachePaths()
