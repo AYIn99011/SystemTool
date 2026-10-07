@@ -1828,6 +1828,29 @@ namespace SystemTool.Pages
                 }
             }
 
+            // 自适应：QQ音乐自定义缓存根目录（如 D:\QQMusicCache）
+            // 实测该目录下的可安全删除子文件夹；扫盘通用方法只认 Cache/Temp 等名字会漏掉它们
+            foreach (var drive in DriveInfo.GetDrives())
+            {
+                try
+                {
+                    if (!drive.IsReady || (drive.DriveType != DriveType.Fixed && drive.DriveType != DriveType.Removable))
+                        continue;
+                    var cacheRoot = Path.Combine(drive.RootDirectory.FullName, "QQMusicCache");
+                    if (!Directory.Exists(cacheRoot)) continue;
+                    foreach (var sub in new[] { "Log", "WebkitCache", "QQMusicPicture", "QQMusicLyricNew", "Temp", "downloadproxyNew" })
+                    {
+                        var p = Path.Combine(cacheRoot, sub);
+                        if (Directory.Exists(p) && !paths.Contains(p, StringComparer.OrdinalIgnoreCase))
+                            paths.Add(p);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogService.Instance.Warning("[CleanerPage.GetQQMusicCachePaths] 枚举QQMusicCache根目录失败", ex);
+                }
+            }
+
             return paths;
         }
 
