@@ -118,8 +118,8 @@ namespace SystemTool.Pages
                 {
                     Content = cat.DisplayName,
                     IsChecked = _selectedKeys.Contains(cat.Key),
-                    Margin = new Thickness(0, 0, 14, 8),
-                    FontSize = 12,
+                    Margin = new Thickness(0, 0, 24, 14),
+                    FontSize = 13,
                     Tag = cat.Key,
                     Cursor = Cursors.Hand,
                 };

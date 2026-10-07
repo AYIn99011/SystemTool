@@ -67,13 +67,13 @@
                                 <Button x:Name="ClearSelectionButton" Content="清空" Style="{StaticResource FluentButton}"
                                         Padding="16,2" MinHeight="28" FontSize="12" Margin="0,0,8,0"
                                         Click="ClearSelectionButton_Click" Cursor="Hand"/>
-                                <ToggleButton x:Name="CustomizeToggle" Content="展开 ▾"
+                                <ToggleButton x:Name="CustomizeToggle" Content="收起 ▴" IsChecked="True"
                                               Style="{StaticResource FluentToggleButton}"
                                               Click="CustomizeToggle_Click"/>
                             </StackPanel>
                         </Grid>
-                        <Border x:Name="CustomizePanel" Visibility="Collapsed" Margin="0,12,0,0"
-                                Background="{StaticResource ControlFillBrush}" CornerRadius="8" Padding="14,12,14,6">
+                        <Border x:Name="CustomizePanel" Visibility="Visible" Margin="0,14,0,0"
+                                Background="{StaticResource ControlFillBrush}" CornerRadius="8" Padding="18,16,18,8">
                             <WrapPanel x:Name="CategoryCheckPanel" Orientation="Horizontal"/>
                         </Border>
                     </StackPanel>
