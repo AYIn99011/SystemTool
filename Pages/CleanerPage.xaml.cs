@@ -2,6 +2,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using SystemTool.Models;
 using SystemTool.Services;
 using SystemTool.Windows;
@@ -17,7 +18,250 @@ namespace SystemTool.Pages
         public CleanerPage()
         {
             InitializeComponent();
+            Loaded += CleanerPage_Loaded;
         }
+
+        #region 顶部汇总条：一键扫描 / 预估 / 上次清理
+
+        private bool _estimateReady;
+        private long _lastEstimate;
+        private static readonly string LastCleanFile = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "SystemTool", "last_clean.txt");
+
+        private async void CleanerPage_Loaded(object sender, RoutedEventArgs e)
+        {
+            LoadLastCleanText();
+            await RunEstimateAsync();
+        }
+
+        /// <summary>更新圆环进度（0~1）。圆心(60,60)，半径54，起点在12点钟方向。</summary>
+        private void UpdateRing(double fraction)
+        {
+            if (RingArc == null) return;
+            if (fraction <= 0.001)
+            {
+                RingArc.Visibility = Visibility.Collapsed;
+                return;
+            }
+            RingArc.Visibility = Visibility.Visible;
+            const double cx = 60, cy = 60, r = 54;
+            string data;
+            if (fraction >= 0.999)
+            {
+                data = $"M {cx:F1},{cy - r:F1} A {r},{r} 0 1,1 {cx - 0.01:F1},{cy - r:F1} A {r},{r} 0 1,1 {cx:F1},{cy - r:F1}";
+            }
+            else
+            {
+                double rad = (fraction * 360.0 - 90.0) * Math.PI / 180.0;
+                double ex = cx + r * Math.Cos(rad), ey = cy + r * Math.Sin(rad);
+                int large = fraction > 0.5 ? 1 : 0;
+                data = $"M {cx:F1},{cy - r:F1} A {r},{r} 0 {large},1 {ex:F1},{ey:F1}";
+            }
+            RingArc.Data = Geometry.Parse(data);
+        }
+
+        /// <summary>只读估算全部可清理大小（字节），顺带推进圆环。</summary>
+        private async Task<long> EstimateAllAsync()
+        {
+            var groups = new (string Name, Func<List<string>> GetPaths)[]
+            {
+                ("系统缓存", GetSystemCacheEstimatePaths),
+                ("系统日志", GetSystemLogsEstimatePaths),
+                ("浏览器缓存", GetBrowserCacheEstimatePaths),
+                ("桌面图标缓存", GetIconCacheEstimatePaths),
+                ("QQ缓存", GetQQCachePaths),
+                ("微信缓存", GetWeChatCachePaths),
+                ("QQ音乐缓存", GetQQMusicCachePaths),
+                ("网易云音乐缓存", GetCloudMusicCachePaths),
+                ("酷狗音乐缓存", GetKuGouCachePaths),
+                ("抖音缓存", GetDouyinCachePaths),
+            };
+            long total = 0;
+            for (int i = 0; i < groups.Length; i++)
+            {
+                int idx = i; // 闭包捕获
+                long sub = await Task.Run(() =>
+                {
+                    long s = 0;
+                    try
+                    {
+                        foreach (var p in groups[idx].GetPaths())
+                            s += CleanService.GetDirectorySize(p);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogService.Instance.Warning($"[CleanerPage.EstimateAllAsync] 估算{groups[idx].Name}失败", ex);
+                    }
+                    return s;
+                });
+                total += sub;
+                UpdateRing((double)(i + 1) / groups.Length * 0.95);
+            }
+            return total;
+        }
+
+        private async Task RunEstimateAsync()
+        {
+            try
+            {
+                EstimateText.Text = "正在扫描…";
+                UpdateRing(0.05);
+                long est = await EstimateAllAsync();
+                _lastEstimate = est;
+                _estimateReady = true;
+                EstimateText.Text = _cleanService.FormatSize(est);
+                // 圆环以 20GB 为满刻度，仅作视觉示意
+                UpdateRing(Math.Min(est / (20.0 * 1024 * 1024 * 1024), 1.0));
+                OneClickButton.Content = $"一键清理（{FormatSize(est)}）";
+            }
+            catch (Exception ex)
+            {
+                LogService.Instance.Warning("[CleanerPage.RunEstimateAsync] 扫描失败", ex);
+                EstimateText.Text = "--";
+            }
+        }
+
+        private async void OneClickButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isOperating) return;
+            _isOperating = true;
+            OneClickButton.IsEnabled = false;
+            try
+            {
+                if (!_estimateReady)
+                {
+                    OneClickButton.Content = "扫描中…";
+                    await RunEstimateAsync();
+                    return;
+                }
+
+                // 一键清理：按顺序执行各分类（图标缓存放最后，它会重启资源管理器）
+                OneClickButton.Content = "清理中…";
+                LogService.Instance.Info("======== 一键清理开始 ========");
+                long freed = 0;
+                freed += await CleanSystemCacheCoreAsync();
+                freed += await CleanSystemLogsCoreAsync();
+                freed += await CleanBrowserCacheCoreAsync();
+                freed += await CleanStoreCacheCoreAsync();
+                freed += await CleanQQCacheCoreAsync();
+                freed += await CleanWeChatCacheCoreAsync();
+                freed += await CleanQQMusicCacheCoreAsync();
+                freed += await CleanCloudMusicCacheCoreAsync();
+                freed += await CleanKuGouCacheCoreAsync();
+                freed += await CleanDouyinCacheCoreAsync();
+                freed += await CleanIconCacheCoreAsync();
+                LogService.Instance.Info("======== 一键清理结束 ========");
+                LogService.Instance.Success($"一键清理完成，共释放空间: {FormatSize(freed)}");
+                MarkCleaned();
+
+                _estimateReady = false;
+                OneClickButton.Content = "一键扫描";
+                await RunEstimateAsync();
+            }
+            finally
+            {
+                _isOperating = false;
+                OneClickButton.IsEnabled = true;
+            }
+        }
+
+        private void MarkCleaned()
+        {
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(LastCleanFile)!);
+                File.WriteAllText(LastCleanFile, DateTime.Now.ToString("o"));
+            }
+            catch (Exception ex)
+            {
+                LogService.Instance.Warning("[CleanerPage.MarkCleaned] 记录清理时间失败", ex);
+            }
+            LoadLastCleanText();
+        }
+
+        private void LoadLastCleanText()
+        {
+            try
+            {
+                if (LastCleanText == null) return;
+                if (!File.Exists(LastCleanFile))
+                {
+                    LastCleanText.Text = "上次清理：从未清理";
+                    return;
+                }
+                var t = DateTime.Parse(File.ReadAllText(LastCleanFile).Trim());
+                LastCleanText.Text = "上次清理：" + FormatLastClean(t);
+            }
+            catch
+            {
+                LastCleanText.Text = "上次清理：--";
+            }
+        }
+
+        private static string FormatLastClean(DateTime t)
+        {
+            var span = DateTime.Now - t;
+            if (span.TotalMinutes < 5) return "刚刚";
+            if (span.TotalHours < 1) return $"{(int)span.TotalMinutes}分钟前";
+            if (span.TotalHours < 24) return $"{(int)span.TotalHours}小时前";
+            if (span.TotalDays < 2) return "昨天";
+            return $"{(int)span.TotalDays}天前";
+        }
+
+        #region 各分类预估路径（只读，供扫描用）
+
+        private List<string> GetSystemCacheEstimatePaths() => new()
+        {
+            Path.GetTempPath(),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Prefetch"),
+            Environment.GetFolderPath(Environment.SpecialFolder.Recent),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp"),
+        };
+
+        private List<string> GetSystemLogsEstimatePaths()
+        {
+            var win = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+            return new()
+            {
+                Path.Combine(win, "Logs"),
+                Path.Combine(win, "Logs", "CBS"),
+                Path.Combine(win, "Logs", "DISM"),
+            };
+        }
+
+        private List<string> GetBrowserCacheEstimatePaths()
+        {
+            string up = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            return new()
+            {
+                Path.Combine(up, @"AppData\Local\Google\Chrome\User Data\Default\Cache"),
+                Path.Combine(up, @"AppData\Local\Google\Chrome\User Data\Default\Code Cache"),
+                Path.Combine(up, @"AppData\Local\Google\Chrome\User Data\Default\GPUCache"),
+                Path.Combine(up, @"AppData\Local\Google\Chrome\User Data\Default\ShaderCache"),
+                Path.Combine(up, @"AppData\Local\Microsoft\Edge\User Data\Default\Cache"),
+                Path.Combine(up, @"AppData\Local\Microsoft\Edge\User Data\Default\Code Cache"),
+                Path.Combine(up, @"AppData\Local\Microsoft\Edge\User Data\Default\GPUCache"),
+                Path.Combine(up, @"AppData\Local\Microsoft\Edge\User Data\Default\ShaderCache"),
+                Path.Combine(up, @"AppData\Local\Mozilla\Firefox\Profiles"),
+                Path.Combine(up, @"AppData\Local\360Chrome\Chrome\User Data\Default\Cache"),
+                Path.Combine(up, @"AppData\Local\Tencent\QQBrowser\User Data\Default\Cache"),
+            };
+        }
+
+        private List<string> GetIconCacheEstimatePaths()
+        {
+            string lad = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            return new()
+            {
+                Path.Combine(lad, "IconCache.db"),
+                Path.Combine(lad, "Microsoft", "Windows", "Explorer"),
+            };
+        }
+
+        #endregion
+
+        #endregion
 
         private async void AdvancedClean_Click(object sender, RoutedEventArgs e)
         {
@@ -128,7 +372,23 @@ namespace SystemTool.Pages
 
         private async void CleanStoreCache_Click(object sender, RoutedEventArgs e)
         {
-            await ExecuteAsync("微软应用商店缓存", async () =>
+            if (_isOperating) return;
+            _isOperating = true;
+            try
+            {
+                await CleanStoreCacheCoreAsync();
+                MarkCleaned();
+            }
+            finally
+            {
+                _isOperating = false;
+            }
+        }
+
+        private async Task<long> CleanStoreCacheCoreAsync()
+        {
+            LogService.Instance.Info("开始清理微软应用商店缓存...");
+            try
             {
                 await Task.Run(() =>
                 {
@@ -139,13 +399,32 @@ namespace SystemTool.Pages
                         WindowStyle = ProcessWindowStyle.Hidden
                     });
                 });
-            });
+                LogService.Instance.Success("微软应用商店缓存清理已启动");
+            }
+            catch (Exception ex)
+            {
+                LogService.Instance.Error($"微软应用商店缓存清理失败: {ex.Message}");
+            }
+            return 0;
         }
 
         private async void CleanSystemLogs_Click(object sender, RoutedEventArgs e)
         {
             if (_isOperating) return;
             _isOperating = true;
+            try
+            {
+                await CleanSystemLogsCoreAsync();
+                MarkCleaned();
+            }
+            finally
+            {
+                _isOperating = false;
+            }
+        }
+
+        private async Task<long> CleanSystemLogsCoreAsync()
+        {
 
             LogService.Instance.Info("开始清理系统日志...");
             LogService.Instance.Info("----------------------------------------");
@@ -210,14 +489,12 @@ namespace SystemTool.Pages
                 LogService.Instance.Info($"  删除文件: {result.fileCount} 个");
                 LogService.Instance.Info($"  删除文件夹: {result.dirCount} 个");
                 LogService.Instance.Success($"系统日志清理完成，释放空间: {FormatSize(result.totalSize)}");
+                return result.totalSize;
             }
             catch (Exception ex)
             {
                 LogService.Instance.Error($"系统日志清理失败: {ex.Message}");
-            }
-            finally
-            {
-                _isOperating = false;
+                return 0;
             }
         }
 
@@ -225,6 +502,19 @@ namespace SystemTool.Pages
         {
             if (_isOperating) return;
             _isOperating = true;
+            try
+            {
+                await CleanSystemCacheCoreAsync();
+                MarkCleaned();
+            }
+            finally
+            {
+                _isOperating = false;
+            }
+        }
+
+        private async Task<long> CleanSystemCacheCoreAsync()
+        {
 
             LogService.Instance.Info("开始清理系统缓存...");
             LogService.Instance.Info("----------------------------------------");
@@ -314,14 +604,12 @@ namespace SystemTool.Pages
                 LogService.Instance.Info($"  删除文件: {result.fileCount} 个");
                 LogService.Instance.Info($"  删除文件夹: {result.dirCount} 个");
                 LogService.Instance.Success($"系统缓存清理完成，释放空间: {FormatSize(result.totalSize)}");
+                return result.totalSize;
             }
             catch (Exception ex)
             {
                 LogService.Instance.Error($"系统缓存清理失败: {ex.Message}");
-            }
-            finally
-            {
-                _isOperating = false;
+                return 0;
             }
         }
 
@@ -329,6 +617,19 @@ namespace SystemTool.Pages
         {
             if (_isOperating) return;
             _isOperating = true;
+            try
+            {
+                await CleanBrowserCacheCoreAsync();
+                MarkCleaned();
+            }
+            finally
+            {
+                _isOperating = false;
+            }
+        }
+
+        private async Task<long> CleanBrowserCacheCoreAsync()
+        {
 
             LogService.Instance.Info("开始清理浏览器缓存...");
             LogService.Instance.Info("----------------------------------------");
@@ -380,10 +681,23 @@ namespace SystemTool.Pages
                 LogService.Instance.Info($"  删除文件: {result.fileCount} 个");
                 LogService.Instance.Info($"  删除文件夹: {result.dirCount} 个");
                 LogService.Instance.Success($"浏览器缓存清理完成，释放空间: {FormatSize(result.totalSize)}");
+                return result.totalSize;
             }
             catch (Exception ex)
             {
                 LogService.Instance.Error($"浏览器缓存清理失败: {ex.Message}");
+                return 0;
+            }
+        }
+
+        private async void CleanIconCache_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isOperating) return;
+            _isOperating = true;
+            try
+            {
+                await CleanIconCacheCoreAsync();
+                MarkCleaned();
             }
             finally
             {
@@ -391,15 +705,8 @@ namespace SystemTool.Pages
             }
         }
 
-        private async void CleanIconCache_Click(object sender, RoutedEventArgs e)
+        private async Task<long> CleanIconCacheCoreAsync()
         {
-            if (_isOperating)
-            {
-                LogService.Instance.Warning("正在执行其他操作，请稍候...");
-                return;
-            }
-
-            _isOperating = true;
             LogService.Instance.Info("开始清理桌面图标缓存...");
             LogService.Instance.Info("----------------------------------------");
 
@@ -507,14 +814,12 @@ namespace SystemTool.Pages
                 LogService.Instance.Info($"图标缓存清理汇总:");
                 LogService.Instance.Info($"  删除文件: {result.fileCount} 个");
                 LogService.Instance.Success($"桌面图标缓存清理完成，释放空间: {FormatSize(result.totalSize)}，资源管理器已重启");
+                return result.totalSize;
             }
             catch (Exception ex)
             {
                 LogService.Instance.Error($"桌面图标缓存清理失败: {ex.Message}");
-            }
-            finally
-            {
-                _isOperating = false;
+                return 0;
             }
         }
 
@@ -522,6 +827,19 @@ namespace SystemTool.Pages
         {
             if (_isOperating) return;
             _isOperating = true;
+            try
+            {
+                await CleanQQMusicCacheCoreAsync();
+                MarkCleaned();
+            }
+            finally
+            {
+                _isOperating = false;
+            }
+        }
+
+        private async Task<long> CleanQQMusicCacheCoreAsync()
+        {
 
             LogService.Instance.Info("开始清理QQ音乐缓存...");
             LogService.Instance.Info("----------------------------------------");
@@ -545,14 +863,12 @@ namespace SystemTool.Pages
                 LogService.Instance.Info($"  删除文件: {result.FileCount} 个");
                 LogService.Instance.Info($"  删除文件夹: {result.DirCount} 个");
                 LogService.Instance.Success($"QQ音乐缓存清理完成，释放空间: {FormatSize(result.Size)}");
+                return result.Size;
             }
             catch (Exception ex)
             {
                 LogService.Instance.Error($"QQ音乐缓存清理失败: {ex.Message}");
-            }
-            finally
-            {
-                _isOperating = false;
+                return 0;
             }
         }
 
@@ -560,6 +876,19 @@ namespace SystemTool.Pages
         {
             if (_isOperating) return;
             _isOperating = true;
+            try
+            {
+                await CleanCloudMusicCacheCoreAsync();
+                MarkCleaned();
+            }
+            finally
+            {
+                _isOperating = false;
+            }
+        }
+
+        private async Task<long> CleanCloudMusicCacheCoreAsync()
+        {
 
             LogService.Instance.Info("开始清理网易云音乐缓存...");
             LogService.Instance.Info("----------------------------------------");
@@ -583,14 +912,12 @@ namespace SystemTool.Pages
                 LogService.Instance.Info($"  删除文件: {result.FileCount} 个");
                 LogService.Instance.Info($"  删除文件夹: {result.DirCount} 个");
                 LogService.Instance.Success($"网易云音乐缓存清理完成，释放空间: {FormatSize(result.Size)}");
+                return result.Size;
             }
             catch (Exception ex)
             {
                 LogService.Instance.Error($"网易云音乐缓存清理失败: {ex.Message}");
-            }
-            finally
-            {
-                _isOperating = false;
+                return 0;
             }
         }
 
@@ -598,6 +925,19 @@ namespace SystemTool.Pages
         {
             if (_isOperating) return;
             _isOperating = true;
+            try
+            {
+                await CleanDouyinCacheCoreAsync();
+                MarkCleaned();
+            }
+            finally
+            {
+                _isOperating = false;
+            }
+        }
+
+        private async Task<long> CleanDouyinCacheCoreAsync()
+        {
 
             LogService.Instance.Info("开始清理抖音缓存...");
             LogService.Instance.Info("----------------------------------------");
@@ -621,14 +961,12 @@ namespace SystemTool.Pages
                 LogService.Instance.Info($"  删除文件: {result.FileCount} 个");
                 LogService.Instance.Info($"  删除文件夹: {result.DirCount} 个");
                 LogService.Instance.Success($"抖音缓存清理完成，释放空间: {FormatSize(result.Size)}");
+                return result.Size;
             }
             catch (Exception ex)
             {
                 LogService.Instance.Error($"抖音缓存清理失败: {ex.Message}");
-            }
-            finally
-            {
-                _isOperating = false;
+                return 0;
             }
         }
 
@@ -636,6 +974,19 @@ namespace SystemTool.Pages
         {
             if (_isOperating) return;
             _isOperating = true;
+            try
+            {
+                await CleanKuGouCacheCoreAsync();
+                MarkCleaned();
+            }
+            finally
+            {
+                _isOperating = false;
+            }
+        }
+
+        private async Task<long> CleanKuGouCacheCoreAsync()
+        {
 
             LogService.Instance.Info("开始清理酷狗音乐缓存...");
             LogService.Instance.Info("----------------------------------------");
@@ -659,14 +1010,12 @@ namespace SystemTool.Pages
                 LogService.Instance.Info($"  删除文件: {result.FileCount} 个");
                 LogService.Instance.Info($"  删除文件夹: {result.DirCount} 个");
                 LogService.Instance.Success($"酷狗音乐缓存清理完成，释放空间: {FormatSize(result.Size)}");
+                return result.Size;
             }
             catch (Exception ex)
             {
                 LogService.Instance.Error($"酷狗音乐缓存清理失败: {ex.Message}");
-            }
-            finally
-            {
-                _isOperating = false;
+                return 0;
             }
         }
 
@@ -674,6 +1023,19 @@ namespace SystemTool.Pages
         {
             if (_isOperating) return;
             _isOperating = true;
+            try
+            {
+                await CleanWeChatCacheCoreAsync();
+                MarkCleaned();
+            }
+            finally
+            {
+                _isOperating = false;
+            }
+        }
+
+        private async Task<long> CleanWeChatCacheCoreAsync()
+        {
 
             LogService.Instance.Info("开始清理微信缓存...");
             LogService.Instance.Info("----------------------------------------");
@@ -711,14 +1073,12 @@ namespace SystemTool.Pages
                 LogService.Instance.Info($"  删除文件: {result.totalFiles} 个");
                 LogService.Instance.Info($"  删除文件夹: {result.totalDirs} 个");
                 LogService.Instance.Success($"微信缓存清理完成，释放空间: {FormatSize(result.totalSize)}");
+                return result.totalSize;
             }
             catch (Exception ex)
             {
                 LogService.Instance.Error($"微信缓存清理失败: {ex.Message}");
-            }
-            finally
-            {
-                _isOperating = false;
+                return 0;
             }
         }
 
@@ -726,6 +1086,19 @@ namespace SystemTool.Pages
         {
             if (_isOperating) return;
             _isOperating = true;
+            try
+            {
+                await CleanQQCacheCoreAsync();
+                MarkCleaned();
+            }
+            finally
+            {
+                _isOperating = false;
+            }
+        }
+
+        private async Task<long> CleanQQCacheCoreAsync()
+        {
 
             LogService.Instance.Info("开始清理QQ缓存...");
             LogService.Instance.Info("----------------------------------------");
@@ -764,14 +1137,12 @@ namespace SystemTool.Pages
                 LogService.Instance.Info($"  删除文件: {result.totalFiles} 个");
                 LogService.Instance.Info($"  删除文件夹: {result.totalDirs} 个");
                 LogService.Instance.Success($"QQ缓存清理完成，释放空间: {FormatSize(result.totalSize)}");
+                return result.totalSize;
             }
             catch (Exception ex)
             {
                 LogService.Instance.Error($"QQ缓存清理失败: {ex.Message}");
-            }
-            finally
-            {
-                _isOperating = false;
+                return 0;
             }
         }
 

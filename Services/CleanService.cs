@@ -346,5 +346,41 @@ namespace SystemTool.Services
 
             return $"{size:0.##} {sizes[order]}";
         }
+
+        /// <summary>
+        /// 只读统计目录大小（不删除）。用于清理前预估可清理空间。
+        /// 逐目录捕获异常，跳过无权限/被占用的路径。
+        /// </summary>
+        public static long GetDirectorySize(string path)
+        {
+            long size = 0;
+            try
+            {
+                if (File.Exists(path))
+                {
+                    try { return new FileInfo(path).Length; } catch { return 0; }
+                }
+                if (!Directory.Exists(path)) return 0;
+
+                var stack = new Stack<string>();
+                stack.Push(path);
+                while (stack.Count > 0)
+                {
+                    var dir = stack.Pop();
+                    try
+                    {
+                        foreach (var file in Directory.EnumerateFiles(dir))
+                        {
+                            try { size += new FileInfo(file).Length; } catch { }
+                        }
+                        foreach (var sub in Directory.EnumerateDirectories(dir))
+                            stack.Push(sub);
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+            return size;
+        }
     }
 }
