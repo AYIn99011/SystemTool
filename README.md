@@ -4,6 +4,10 @@ Windows 桌面工具箱（WPF / .NET 10）：设备信息监控、系统垃圾�
 
 ## 界面预览
 
+### 设备信息
+
+![设备信息](docs/screenshots/device-info.png)
+
 ### 清理垃圾
 
 ![清理垃圾](docs/screenshots/cleaner.png)
