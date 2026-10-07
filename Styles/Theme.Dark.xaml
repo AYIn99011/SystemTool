@@ -23,7 +23,7 @@
 
     <!-- 分层填充（Mica 之上的极淡提亮） -->
     <!-- 导航栏底 -->
-    <SolidColorBrush x:Key="NavBackgroundBrush" Color="#4D000000"/>
+    <SolidColorBrush x:Key="NavBackgroundBrush" Color="#26000000"/>
     <!-- 内容分组：只比 Mica 亮一点点 -->
     <SolidColorBrush x:Key="SectionFillBrush" Color="#0AFFFFFF"/>
     <SolidColorBrush x:Key="SectionHoverBrush" Color="#14FFFFFF"/>

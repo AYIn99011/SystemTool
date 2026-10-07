@@ -156,6 +156,7 @@
                         <Border BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,1,0,0"
                                 Padding="0,12,0,0" Margin="0,0,0,8">
                             <StackPanel Orientation="Horizontal" Cursor="Hand"
+                                        HorizontalAlignment="Center"
                                         MouseLeftButtonDown="AdminStatus_Click">
                                 <Ellipse Width="8" Height="8" Fill="{StaticResource SuccessBrush}"
                                          VerticalAlignment="Center"/>

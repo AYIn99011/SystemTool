@@ -23,7 +23,7 @@
 
     <!-- 分层填充（Acrylic 之上的白色提亮） -->
     <!-- 导航栏底 -->
-    <SolidColorBrush x:Key="NavBackgroundBrush" Color="#B3F3F3F3"/>
+    <SolidColorBrush x:Key="NavBackgroundBrush" Color="#73F3F3F3"/>
     <!-- 内容分组：Acrylic 之上的淡淡白 -->
     <SolidColorBrush x:Key="SectionFillBrush" Color="#59FFFFFF"/>
     <SolidColorBrush x:Key="SectionHoverBrush" Color="#73FFFFFF"/>
