@@ -19,7 +19,7 @@
                     <StackPanel>
                         <TextBlock Text="修复系统" FontSize="16" FontWeight="SemiBold"
                                    Foreground="{StaticResource TextPrimaryBrush}"/>
-                        <TextBlock Text="共 3 项修复工具 · 扫描并修复系统文件与映像问题" FontSize="12"
+                        <TextBlock Text="共 4 项修复工具 · 扫描并修复系统文件与映像问题" FontSize="12"
                                    Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
                     </StackPanel>
                 </Border>
@@ -73,6 +73,23 @@
                             <TextBlock Grid.Row="1" Text="下载 DLL 修复工具，修复缺失的 DLL 文件" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
                             <StackPanel Grid.Row="2" Orientation="Horizontal">
                                 <Button Content="下载 DLL 工具" Style="{StaticResource AccentButton}" Click="DownloadDllTool_Click" Cursor="Hand"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
+                            BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                            Padding="18" Margin="6">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="网络修复" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Grid.Row="1" Text="一键重置 Winsock、刷新 DNS 缓存、重置 IP 配置并关闭系统代理" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal">
+                                <Button Content="开始修复" Style="{StaticResource AccentButton}" Click="NetworkRepair_Click" Cursor="Hand"/>
                             </StackPanel>
                         </Grid>
                     </Border>

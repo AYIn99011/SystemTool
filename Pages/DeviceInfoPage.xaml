@@ -345,7 +345,6 @@
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="Auto"/>
                                                 <RowDefinition Height="Auto"/>
-                                                <RowDefinition Height="Auto"/>
                                             </Grid.RowDefinitions>
                                             <TextBlock Text="型号" Style="{StaticResource InfoLabel}"/>
                                             <TextBlock Grid.Column="1" Style="{StaticResource InfoValue}">
@@ -355,8 +354,6 @@
                                             </TextBlock>
                                             <TextBlock Grid.Row="1" Text="健康度" Style="{StaticResource InfoLabel}" Margin="0,4,0,0"/>
                                             <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding HealthText}" Style="{StaticResource InfoValue}" Margin="0,4,0,0"/>
-                                            <TextBlock Grid.Row="2" Text="温度" Style="{StaticResource InfoLabel}" Margin="0,4,0,0"/>
-                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding TempText}" Style="{StaticResource InfoValue}" Margin="0,4,0,0"/>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>

@@ -72,4 +72,46 @@ public partial class RepairPage : Page
             MessageBox.Show("无法打开下载链接。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
+
+    private void NetworkRepair_Click(object sender, RoutedEventArgs e)
+    {
+        // 先在进程内关闭系统代理（HKCU，无需管理员）
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                @"Software\Microsoft\Windows\CurrentVersion\Internet Settings", writable: true);
+            if (key != null)
+            {
+                key.SetValue("ProxyEnable", 0, Microsoft.Win32.RegistryValueKind.DWord);
+                Services.LogService.Instance.Info("网络修复: 已关闭系统代理 (ProxyEnable=0)");
+            }
+        }
+        catch (Exception ex)
+        {
+            Services.LogService.Instance.Warning("[RepairPage.NetworkRepair_Click] 关闭系统代理失败", ex);
+        }
+
+        // 再以管理员身份跑 netsh / ipconfig（需要提权，沿用本页其它修复项的弹窗 cmd 风格）
+        try
+        {
+            var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = "/c netsh winsock reset & ipconfig /flushdns & netsh int ip reset & echo. & echo 网络修复完成: Winsock/DNS/IP 已重置，系统代理已关闭，部分设置需重启电脑生效 & pause",
+                    UseShellExecute = true,
+                    Verb = "runas",
+                    WindowStyle = ProcessWindowStyle.Normal
+                }
+            };
+            process.Start();
+            Services.LogService.Instance.Info("网络修复: 已启动 Winsock/DNS/IP 重置");
+        }
+        catch (Exception ex)
+        {
+            Services.LogService.Instance.Warning("[RepairPage.NetworkRepair_Click] 启动网络修复失败", ex);
+            MessageBox.Show("无法启动网络修复，请确保以管理员权限运行。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
 }

@@ -896,9 +896,7 @@ public static class SystemInfoHelper
         public string Model { get; set; } = "未知";
         public string Size { get; set; } = "";
         public double? HealthPercent { get; set; }
-        public double? Temperature { get; set; }
         public string HealthText => HealthPercent.HasValue ? $"{HealthPercent.Value:F0}%" : "--";
-        public string TempText => Temperature.HasValue ? $"{Temperature.Value:F0}°C" : "--";
     }
 
     private static List<DiskDriveDetail>? _cachedDiskDrives;
@@ -935,7 +933,7 @@ public static class SystemInfoHelper
         return result;
     }
 
-    /// <summary>刷新硬盘健康度与温度（只走 LHM，不查 WMI，可频繁调用）。按名字模糊匹配，匹配不上时按顺序兜底。</summary>
+    /// <summary>刷新硬盘健康度（只走 LHM，不查 WMI，可频繁调用）。按名字模糊匹配，匹配不上时按顺序兜底。</summary>
     public static void UpdateDiskDriveSensors(List<DiskDriveDetail> drives)
     {
         if (drives == null || drives.Count == 0) return;
@@ -944,23 +942,16 @@ public static class SystemInfoHelper
             try
             {
                 var computer = GetComputer();
-                var storages = new List<(string name, double? health, double? temp)>();
+                var storages = new List<(string name, double? health)>();
                 foreach (var hardware in computer.Hardware)
                 {
                     if (hardware.HardwareType != HardwareType.Storage) continue;
                     hardware.Update();
                     double? health = null;
-                    double? temp = null;
                     foreach (var sensor in hardware.Sensors)
                     {
                         if (!sensor.Value.HasValue) continue;
-                        if (sensor.SensorType == SensorType.Temperature)
-                        {
-                            var v = sensor.Value.Value;
-                            if (v > 0 && v < 120 && (!temp.HasValue || v > temp.Value))
-                                temp = v;
-                        }
-                        else if (sensor.SensorType == SensorType.Level)
+                        if (sensor.SensorType == SensorType.Level)
                         {
                             var sname = sensor.Name?.ToLower() ?? "";
                             if (sname.Contains("life") || sname.Contains("health") || sname.Contains("wear"))
@@ -970,14 +961,14 @@ public static class SystemInfoHelper
                             }
                         }
                     }
-                    storages.Add((hardware.Name ?? "", health, temp));
+                    storages.Add((hardware.Name ?? "", health));
                 }
 
                 for (int i = 0; i < drives.Count; i++)
                 {
                     var d = drives[i];
                     var normModel = d.Model.Replace(" ", "").ToLower();
-                    (string name, double? health, double? temp)? match = null;
+                    (string name, double? health)? match = null;
                     foreach (var s in storages)
                     {
                         var normName = s.name.Replace(" ", "").ToLower();
@@ -991,10 +982,7 @@ public static class SystemInfoHelper
                     if (!match.HasValue && storages.Count == drives.Count)
                         match = storages[i];
                     if (match.HasValue)
-                    {
                         d.HealthPercent = match.Value.health;
-                        d.Temperature = match.Value.temp;
-                    }
                 }
             }
             catch (Exception ex)
