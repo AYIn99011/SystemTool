@@ -378,13 +378,30 @@ namespace SystemTool.Pages
 
         #region 各分类预估路径（只读，供扫描用）
 
-        private List<string> GetSystemCacheEstimatePaths() => new()
+        private List<string> GetSystemCacheEstimatePaths()
         {
-            Path.GetTempPath(),
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Prefetch"),
-            Environment.GetFolderPath(Environment.SpecialFolder.Recent),
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp"),
-        };
+            var paths = new List<string>
+            {
+                Path.GetTempPath(),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Prefetch"),
+                Environment.GetFolderPath(Environment.SpecialFolder.Recent),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp"),
+            };
+            // 缩略图缓存：清理时会删 thumbcache_*.db，预估也要算上（与清理逻辑一致）
+            try
+            {
+                var explorerDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Microsoft", "Windows", "Explorer");
+                if (Directory.Exists(explorerDir))
+                    paths.AddRange(Directory.GetFiles(explorerDir, "thumbcache_*.db"));
+            }
+            catch (Exception ex)
+            {
+                LogService.Instance.Warning("[CleanerPage.GetSystemCacheEstimatePaths] 枚举缩略图缓存失败", ex);
+            }
+            return paths;
+        }
 
         private List<string> GetSystemLogsEstimatePaths()
         {
@@ -397,33 +414,68 @@ namespace SystemTool.Pages
             };
         }
 
+        /// <summary>枚举 Chromium 内核浏览器的全部配置文件缓存目录（Default + Profile * + Guest）。</summary>
+        private List<string> GetChromiumProfileCachePaths(string userDataDir)
+        {
+            var paths = new List<string>();
+            try
+            {
+                if (!Directory.Exists(userDataDir)) return paths;
+                foreach (var profileDir in Directory.GetDirectories(userDataDir))
+                {
+                    var name = Path.GetFileName(profileDir);
+                    if (!name.Equals("Default", StringComparison.OrdinalIgnoreCase)
+                        && !name.StartsWith("Profile ", StringComparison.OrdinalIgnoreCase)
+                        && !name.Equals("Guest Profile", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    foreach (var sub in new[] { "Cache", "Code Cache", "GPUCache", "ShaderCache" })
+                    {
+                        var p = Path.Combine(profileDir, sub);
+                        if (Directory.Exists(p)) paths.Add(p);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.Instance.Warning("[CleanerPage.GetChromiumProfileCachePaths] 枚举浏览器配置失败", ex);
+            }
+            return paths;
+        }
+
         private List<string> GetBrowserCacheEstimatePaths()
         {
             string up = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            return new()
-            {
-                Path.Combine(up, @"AppData\Local\Google\Chrome\User Data\Default\Cache"),
-                Path.Combine(up, @"AppData\Local\Google\Chrome\User Data\Default\Code Cache"),
-                Path.Combine(up, @"AppData\Local\Google\Chrome\User Data\Default\GPUCache"),
-                Path.Combine(up, @"AppData\Local\Google\Chrome\User Data\Default\ShaderCache"),
-                Path.Combine(up, @"AppData\Local\Microsoft\Edge\User Data\Default\Cache"),
-                Path.Combine(up, @"AppData\Local\Microsoft\Edge\User Data\Default\Code Cache"),
-                Path.Combine(up, @"AppData\Local\Microsoft\Edge\User Data\Default\GPUCache"),
-                Path.Combine(up, @"AppData\Local\Microsoft\Edge\User Data\Default\ShaderCache"),
-                Path.Combine(up, @"AppData\Local\Mozilla\Firefox\Profiles"),
-                Path.Combine(up, @"AppData\Local\360Chrome\Chrome\User Data\Default\Cache"),
-                Path.Combine(up, @"AppData\Local\Tencent\QQBrowser\User Data\Default\Cache"),
-            };
+            var paths = new List<string>();
+            paths.AddRange(GetChromiumProfileCachePaths(Path.Combine(up, @"AppData\Local\Google\Chrome\User Data")));
+            paths.AddRange(GetChromiumProfileCachePaths(Path.Combine(up, @"AppData\Local\Microsoft\Edge\User Data")));
+            string ff = Path.Combine(up, @"AppData\Local\Mozilla\Firefox\Profiles");
+            if (Directory.Exists(ff)) paths.Add(ff);
+            string c360 = Path.Combine(up, @"AppData\Local\360Chrome\Chrome\User Data\Default\Cache");
+            if (Directory.Exists(c360)) paths.Add(c360);
+            string qq = Path.Combine(up, @"AppData\Local\Tencent\QQBrowser\User Data\Default\Cache");
+            if (Directory.Exists(qq)) paths.Add(qq);
+            return paths;
         }
 
         private List<string> GetIconCacheEstimatePaths()
         {
+            // 只算实际会删的文件：IconCache.db + iconcache_*.db
+            // （之前算整个 Explorer 文件夹会多算很多不删的文件；thumbcache 归系统缓存算，避免重复）
+            var paths = new List<string>();
             string lad = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            return new()
+            string dbFile = Path.Combine(lad, "IconCache.db");
+            if (File.Exists(dbFile)) paths.Add(dbFile);
+            try
             {
-                Path.Combine(lad, "IconCache.db"),
-                Path.Combine(lad, "Microsoft", "Windows", "Explorer"),
-            };
+                var explorerDir = Path.Combine(lad, "Microsoft", "Windows", "Explorer");
+                if (Directory.Exists(explorerDir))
+                    paths.AddRange(Directory.GetFiles(explorerDir, "iconcache_*.db"));
+            }
+            catch (Exception ex)
+            {
+                LogService.Instance.Warning("[CleanerPage.GetIconCacheEstimatePaths] 枚举图标缓存失败", ex);
+            }
+            return paths;
         }
 
         #endregion
@@ -810,20 +862,14 @@ namespace SystemTool.Pages
                     int dirCount = 0;
                     string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
-                    var browserPaths = new Dictionary<string, string>
-                    {
-                        { "Chrome缓存", Path.Combine(userProfile, @"AppData\Local\Google\Chrome\User Data\Default\Cache") },
-                        { "Chrome代码缓存", Path.Combine(userProfile, @"AppData\Local\Google\Chrome\User Data\Default\Code Cache") },
-                        { "Chrome GPU缓存", Path.Combine(userProfile, @"AppData\Local\Google\Chrome\User Data\Default\GPUCache") },
-                        { "Chrome ShaderCache", Path.Combine(userProfile, @"AppData\Local\Google\Chrome\User Data\Default\ShaderCache") },
-                        { "Edge缓存", Path.Combine(userProfile, @"AppData\Local\Microsoft\Edge\User Data\Default\Cache") },
-                        { "Edge代码缓存", Path.Combine(userProfile, @"AppData\Local\Microsoft\Edge\User Data\Default\Code Cache") },
-                        { "Edge GPU缓存", Path.Combine(userProfile, @"AppData\Local\Microsoft\Edge\User Data\Default\GPUCache") },
-                        { "Edge ShaderCache", Path.Combine(userProfile, @"AppData\Local\Microsoft\Edge\User Data\Default\ShaderCache") },
-                        { "Firefox缓存", Path.Combine(userProfile, @"AppData\Local\Mozilla\Firefox\Profiles") },
-                        { "360安全浏览器缓存", Path.Combine(userProfile, @"AppData\Local\360Chrome\Chrome\User Data\Default\Cache") },
-                        { "QQ浏览器缓存", Path.Combine(userProfile, @"AppData\Local\Tencent\QQBrowser\User Data\Default\Cache") },
-                    };
+                    var browserPaths = new Dictionary<string, string>();
+                    foreach (var p in GetChromiumProfileCachePaths(Path.Combine(userProfile, @"AppData\Local\Google\Chrome\User Data")))
+                        browserPaths[$"Chrome缓存({Path.GetFileName(Path.GetDirectoryName(p))})"] = p;
+                    foreach (var p in GetChromiumProfileCachePaths(Path.Combine(userProfile, @"AppData\Local\Microsoft\Edge\User Data")))
+                        browserPaths[$"Edge缓存({Path.GetFileName(Path.GetDirectoryName(p))})"] = p;
+                    browserPaths.Add("Firefox缓存", Path.Combine(userProfile, @"AppData\Local\Mozilla\Firefox\Profiles"));
+                    browserPaths.Add("360安全浏览器缓存", Path.Combine(userProfile, @"AppData\Local\360Chrome\Chrome\User Data\Default\Cache"));
+                    browserPaths.Add("QQ浏览器缓存", Path.Combine(userProfile, @"AppData\Local\Tencent\QQBrowser\User Data\Default\Cache"));
 
                     foreach (var browser in browserPaths)
                     {
