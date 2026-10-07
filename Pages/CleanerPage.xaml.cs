@@ -35,19 +35,25 @@ namespace SystemTool.Pages
             public string DisplayName { get; }
             public Func<List<string>> GetEstimatePaths { get; }
             public Func<Task<long>> CleanCoreAsync { get; }
+            /// <summary>是否可预估大小（应用商店缓存走 WSReset，无法预估）。</summary>
+            public bool HasEstimate { get; }
 
             public CleanCategory(string key, string displayName,
-                Func<List<string>> getEstimatePaths, Func<Task<long>> cleanCoreAsync)
+                Func<List<string>> getEstimatePaths, Func<Task<long>> cleanCoreAsync,
+                bool hasEstimate = true)
             {
                 Key = key;
                 DisplayName = displayName;
                 GetEstimatePaths = getEstimatePaths;
                 CleanCoreAsync = cleanCoreAsync;
+                HasEstimate = hasEstimate;
             }
         }
 
         private readonly List<CleanCategory> _categories = new();
         private readonly HashSet<string> _selectedKeys = new(StringComparer.OrdinalIgnoreCase);
+        /// <summary>上次扫描的各分类大小（Key=分类Key）。</summary>
+        private Dictionary<string, long> _lastEstimates = new(StringComparer.OrdinalIgnoreCase);
         private static readonly string SelectionFile = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "SystemTool", "clean_selection.txt");
@@ -58,7 +64,7 @@ namespace SystemTool.Pages
             _categories.Add(new CleanCategory("SystemCache", "系统缓存", GetSystemCacheEstimatePaths, CleanSystemCacheCoreAsync));
             _categories.Add(new CleanCategory("SystemLogs", "系统日志", GetSystemLogsEstimatePaths, CleanSystemLogsCoreAsync));
             _categories.Add(new CleanCategory("BrowserCache", "浏览器缓存", GetBrowserCacheEstimatePaths, CleanBrowserCacheCoreAsync));
-            _categories.Add(new CleanCategory("StoreCache", "应用商店缓存", () => new List<string>(), CleanStoreCacheCoreAsync));
+            _categories.Add(new CleanCategory("StoreCache", "应用商店缓存", () => new List<string>(), CleanStoreCacheCoreAsync, hasEstimate: false));
             _categories.Add(new CleanCategory("QQ", "QQ缓存", GetQQCachePaths, CleanQQCacheCoreAsync));
             _categories.Add(new CleanCategory("WeChat", "微信缓存", GetWeChatCachePaths, CleanWeChatCacheCoreAsync));
             _categories.Add(new CleanCategory("QQMusic", "QQ音乐缓存", GetQQMusicCachePaths, CleanQQMusicCacheCoreAsync));
@@ -220,11 +226,11 @@ namespace SystemTool.Pages
             RingArc.Data = Geometry.Parse(data);
         }
 
-        /// <summary>只读估算已选分类可清理大小（字节），顺带推进圆环。</summary>
-        private async Task<long> EstimateAllAsync()
+        /// <summary>只读估算已选分类可清理大小，返回各分类字节数，顺带推进圆环。</summary>
+        private async Task<Dictionary<string, long>> EstimateAllAsync()
         {
             var selected = _categories.Where(c => _selectedKeys.Contains(c.Key)).ToList();
-            long total = 0;
+            var sizes = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
             for (int i = 0; i < selected.Count; i++)
             {
                 var cat = selected[i];
@@ -242,10 +248,25 @@ namespace SystemTool.Pages
                     }
                     return s;
                 });
-                total += sub;
+                sizes[cat.Key] = sub;
                 UpdateRing(selected.Count == 0 ? 0 : (double)(i + 1) / selected.Count * 0.95);
             }
-            return total;
+            return sizes;
+        }
+
+        /// <summary>把上次扫描的各分类大小刷新到清理范围的复选框上。</summary>
+        private void RefreshCategorySizes()
+        {
+            foreach (CheckBox cb in CategoryCheckPanel.Children)
+            {
+                if (cb.Tag is not string key) continue;
+                var cat = _categories.FirstOrDefault(c => c.Key.Equals(key, StringComparison.OrdinalIgnoreCase));
+                if (cat == null) continue;
+                string label = cat.DisplayName;
+                if (cat.HasEstimate && _lastEstimates.TryGetValue(key, out long size))
+                    label += $"（{FormatSize(size)}）";
+                cb.Content = label;
+            }
         }
 
         private async Task RunEstimateAsync()
@@ -254,13 +275,15 @@ namespace SystemTool.Pages
             {
                 EstimateText.Text = "正在扫描…";
                 UpdateRing(0.05);
-                long est = await EstimateAllAsync();
+                _lastEstimates = await EstimateAllAsync();
+                long est = _lastEstimates.Values.Sum();
                 _lastEstimate = est;
                 _estimateReady = true;
                 EstimateText.Text = _cleanService.FormatSize(est);
                 // 圆环以 20GB 为满刻度，仅作视觉示意
                 UpdateRing(Math.Min(est / (20.0 * 1024 * 1024 * 1024), 1.0));
                 OneClickButton.Content = $"一键清理（{FormatSize(est)}）";
+                RefreshCategorySizes();
             }
             catch (Exception ex)
             {

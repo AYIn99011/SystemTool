@@ -127,13 +127,7 @@
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    <Border Width="42" Height="42" CornerRadius="10" Background="#07c160" HorizontalAlignment="Left">
-                        <Viewbox Width="24" Height="24">
-                            <Canvas Width="24" Height="24">
-                                <Path Fill="#FFFFFF" Data="M8.5,5A1.5,1.5 0 0,1 10,6.5A1.5,1.5 0 0,1 8.5,8A1.5,1.5 0 0,1 7,6.5A1.5,1.5 0 0,1 8.5,5M10,14A1,1 0 0,1 11,15A1,1 0 0,1 10,16A1,1 0 0,1 9,15A1,1 0 0,1 10,14M8.5,11A4.5,4.5 0 0,0 4,15.5A4.5,4.5 0 0,0 8.5,20A4.5,4.5 0 0,0 13,15.5A4.5,4.5 0 0,0 8.5,11M16,2A2,2 0 0,0 14,4V20A2,2 0 0,0 16,22H18A2,2 0 0,0 20,20V4A2,2 0 0,0 18,2H16Z"/>
-                            </Canvas>
-                        </Viewbox>
-                    </Border>
+                    <Image Source="/icon/wechat.png" Width="42" Height="42" HorizontalAlignment="Left" RenderOptions.BitmapScalingMode="HighQuality"/>
                     <TextBlock Grid.Row="1" Text="微信缓存" FontSize="15" FontWeight="SemiBold"
                                Foreground="{StaticResource TextPrimaryBrush}" Margin="0,10,0,0"/>
                     <TextBlock Grid.Row="2" Text="清理微信缓存和日志文件" FontSize="12" Margin="0,4,0,0"
