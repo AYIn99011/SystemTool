@@ -90,7 +90,7 @@
             <Grid>
                 <ListBox x:Name="LogListBox"
                          Background="Transparent" BorderThickness="0" Padding="12,10"
-                         ScrollViewer.VerticalScrollBarVisibility="Auto">
+                         ScrollViewer.VerticalScrollBarVisibility="Hidden">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <Border Background="{StaticResource ControlFillBrush}" CornerRadius="6" Padding="10,7" Margin="0,0,0,4">
@@ -186,7 +186,7 @@
 
                 <ListBox Grid.Row="1" ItemsSource="{Binding UpdateLogs, Source={x:Static Services:LogService.Instance}}"
                          Background="Transparent" BorderThickness="0" Padding="12,0,12,10"
-                         ScrollViewer.VerticalScrollBarVisibility="Auto">
+                         ScrollViewer.VerticalScrollBarVisibility="Hidden">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <Border Background="{StaticResource ControlFillBrush}" CornerRadius="6" Padding="12,10" Margin="0,0,0,6">

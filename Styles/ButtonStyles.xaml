@@ -52,6 +52,7 @@
 
     <!-- 小型开关按钮（Fluent 风格，用于 ToggleButton；选中时淡蓝底） -->
     <Style x:Key="FluentToggleButton" TargetType="ToggleButton">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
         <Setter Property="MinHeight" Value="28"/>
         <Setter Property="Padding" Value="12,4"/>
         <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}"/>
@@ -89,6 +90,7 @@
 
     <!-- 左侧导航项（Win11 设置式） -->
     <Style x:Key="NavItemStyle" TargetType="RadioButton">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
         <Setter Property="Height" Value="44"/>
         <Setter Property="Margin" Value="4,2"/>
         <Setter Property="Padding" Value="12,0"/>
