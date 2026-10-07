@@ -202,6 +202,26 @@ public partial class MainWindow : Window
         {
             NavigateToPage("DeviceInfo");
         }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+
+        // PawnIO 测温驱动缺失时提示安装（只在用户未拒绝过时弹一次）
+        Dispatcher.BeginInvoke(new Action(CheckPawnIoDriver), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+    }
+
+    private void CheckPawnIoDriver()
+    {
+        try
+        {
+            if (Services.PawnIoDriverService.IsDriverInstalled
+                || Services.PawnIoDriverService.IsPromptDeclined())
+                return;
+
+            var dlg = new Windows.PawnIoInstallWindow { Owner = this };
+            dlg.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            Services.LogService.Instance.Warning("[MainWindow.CheckPawnIoDriver] 执行失败", ex);
+        }
     }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
