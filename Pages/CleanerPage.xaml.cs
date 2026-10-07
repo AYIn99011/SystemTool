@@ -1891,6 +1891,8 @@ namespace SystemTool.Pages
                 Path.Combine(localAppData, "NetEase", "CloudMusic", "Cache"),
                 Path.Combine(localAppData, "NetEase", "CloudMusic", "temp"),
                 Path.Combine(localAppData, "NetEase", "CloudMusic", "Temp"),
+                // 内嵌浏览器（CEF）网页缓存：专辑图、页面资源等，删除后自动重建
+                Path.Combine(localAppData, "NetEase", "CloudMusic", "webdata"),
                 Path.Combine(appData, "NetEase", "CloudMusic", "cache"),
                 Path.Combine(appData, "NetEase", "CloudMusic", "Cache"),
                 Path.Combine(userProfile, "Music", "NetEase", "CloudMusic", "cache"),
