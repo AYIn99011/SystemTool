@@ -393,8 +393,12 @@ public static class SystemInfoHelper
         return 0;
     }
 
+    private static bool? _wmiThermalZoneSupported;
+
     private static double GetCpuTemperatureFromWmi()
     {
+        // 该 WMI 类在这台机器上不存在的话是永久失败，记一次之后不再每秒重试刷屏
+        if (_wmiThermalZoneSupported == false) return 0;
         try
         {
             using var searcher = new System.Management.ManagementObjectSearcher(
@@ -408,12 +412,15 @@ public static class SystemInfoHelper
                 if (temp != null && (name.Contains("cpu") || name.Contains("processor") || name.Contains("thermal")))
                 {
                     var tempValue = Convert.ToDouble(temp);
+                    _wmiThermalZoneSupported = true;
                     return tempValue - 273.15;
                 }
             }
+            _wmiThermalZoneSupported = true; // 类存在，只是没匹配到温度项
         }
         catch (Exception ex)
         {
+            _wmiThermalZoneSupported = false;
             LogService.Instance.Warning("[SystemInfoHelper.GetCpuTemperatureFromWmi] 执行失败", ex);
         }
         return 0;
