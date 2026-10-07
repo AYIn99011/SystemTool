@@ -89,9 +89,11 @@ public static class ThemeManager
 
             if (window.FindName("RootGrid") is Panel root)
             {
-                if (ok)
+                if (ok && live?["WindowBackgroundBrush"] is Brush tint)
                 {
-                    root.Background = Brushes.Transparent;
+                    // 半透明罩染：Acrylic 模糊照透，但任何壁纸下文字都有对比度。
+                    // 引用主题字典里的画刷对象：换肤时原地改色自动跟随深浅。
+                    root.Background = tint;
                 }
                 else if (live?["FallbackBackgroundBrush"] is Brush fallback)
                 {

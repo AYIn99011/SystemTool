@@ -46,4 +46,7 @@
     <!-- Win10 降级用纯色背景 -->
     <SolidColorBrush x:Key="FallbackBackgroundBrush" Color="#202020"/>
 
+    <!-- Acrylic 之上的半透明罩染：模糊照透，但任何壁纸下文字都有对比度 -->
+    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#CC1F1F1F"/>
+
 </ResourceDictionary>
