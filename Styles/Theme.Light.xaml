@@ -30,6 +30,8 @@
     <!-- 控件默认 / 悬停 / 按下 -->
     <SolidColorBrush x:Key="ControlFillBrush" Color="#4DFFFFFF"/>
     <SolidColorBrush x:Key="ControlHoverBrush" Color="#66FFFFFF"/>
+    <!-- 导航选中框：比侧栏更不透，做出"框内比框外更糊"的磨砂感 -->
+    <SolidColorBrush x:Key="NavSelectedBrush" Color="#D9FFFFFF"/>
     <SolidColorBrush x:Key="ControlPressedBrush" Color="#40FFFFFF"/>
 
     <!-- 边框与分割线 -->

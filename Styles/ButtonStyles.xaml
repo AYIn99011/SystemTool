@@ -63,7 +63,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="RadioButton">
-                    <Border x:Name="Root" Background="{TemplateBinding Background}" CornerRadius="6"
+                    <Border x:Name="Root" Background="{TemplateBinding Background}" CornerRadius="8"
                             Padding="{TemplateBinding Padding}">
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -85,7 +85,7 @@
                             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Root" Property="Background" Value="{StaticResource ControlHoverBrush}"/>
+                            <Setter TargetName="Root" Property="Background" Value="{StaticResource NavSelectedBrush}"/>
                             <Setter TargetName="Indicator" Property="Visibility" Value="Visible"/>
                             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
                         </Trigger>
