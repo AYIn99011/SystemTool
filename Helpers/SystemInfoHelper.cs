@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Text;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
@@ -271,9 +272,8 @@ public static class SystemInfoHelper
         double temp2 = GetCpuTemperatureFromWmi();
         if (temp2 > 0) return temp2;
 
-        temp2 = GetCpuTemperatureFromMsaAcpi();
-        if (temp2 > 0) return temp2;
-
+        // 注意：MSAcpi_ThermalZoneTemperature 是主板热区温度，不是 CPU 温度，
+        // 曾被误标为"处理器温度"导致与 AIDA64 对不上。读不到真实 CPU 温度就返回 0（界面显示 --），不再拿错数充数。
         return 0;
     }
 
@@ -384,6 +384,7 @@ public static class SystemInfoHelper
             if (packageTemp.HasValue) return packageTemp.Value;
             if (coreFound) return coreMax;
             if (superIoFound) return superIoMax;
+            DumpLhmSensorsOnce(computer, laptop);
             return 0;
         }
         catch (Exception ex)
@@ -391,6 +392,33 @@ public static class SystemInfoHelper
             LogService.Instance.Warning("[SystemInfoHelper.GetCpuTemperatureFromLibreHardwareMonitorInternal] 执行失败", ex);
         }
         return 0;
+    }
+
+    private static bool _lhmDumped;
+
+    /// <summary>LibreHardwareMonitor 读不到 CPU 温度时，一次性记录硬件/传感器清单，便于诊断是没枚举到还是名字没匹配上。</summary>
+    private static void DumpLhmSensorsOnce(Computer computer, bool laptop)
+    {
+        if (_lhmDumped) return;
+        _lhmDumped = true;
+        try
+        {
+            var sb = new StringBuilder("[SystemInfoHelper] LHM 未读到CPU温度，硬件清单(laptop=").Append(laptop).Append("): ");
+            foreach (var hardware in computer.Hardware)
+            {
+                sb.Append($"[{hardware.HardwareType}:{hardware.Name} sensors={hardware.Sensors.Length}] ");
+                foreach (var s in hardware.Sensors)
+                {
+                    if (s.SensorType == SensorType.Temperature)
+                        sb.Append($"{s.Name}={(s.Value.HasValue ? s.Value.Value.ToString("F1") : "null")}; ");
+                }
+            }
+            LogService.Instance.Warning(sb.ToString());
+        }
+        catch (Exception ex)
+        {
+            LogService.Instance.Warning("[SystemInfoHelper.DumpLhmSensorsOnce] 执行失败", ex);
+        }
     }
 
     private static bool? _wmiThermalZoneSupported;
@@ -422,30 +450,6 @@ public static class SystemInfoHelper
         {
             _wmiThermalZoneSupported = false;
             LogService.Instance.Warning("[SystemInfoHelper.GetCpuTemperatureFromWmi] 执行失败", ex);
-        }
-        return 0;
-    }
-
-    private static double GetCpuTemperatureFromMsaAcpi()
-    {
-        try
-        {
-            using var searcher = new System.Management.ManagementObjectSearcher(
-                "root\\WMI", "SELECT CurrentTemperature FROM MSAcpi_ThermalZoneTemperature");
-            
-            foreach (var obj in searcher.Get())
-            {
-                var temp = obj["CurrentTemperature"];
-                if (temp != null)
-                {
-                    var tempValue = Convert.ToDouble(temp);
-                    return (tempValue - 2732) / 10.0;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            LogService.Instance.Warning("[SystemInfoHelper.GetCpuTemperatureFromMsaAcpi] 执行失败", ex);
         }
         return 0;
     }
