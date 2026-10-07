@@ -1,4 +1,4 @@
-﻿<Page x:Class="SystemTool.Pages.ToolsPage"
+<Page x:Class="SystemTool.Pages.ToolsPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       Title="其他工具"
@@ -10,117 +10,59 @@
 
     <Grid Background="Transparent">
         <ScrollViewer VerticalScrollBarVisibility="Hidden">
-            <Grid Margin="30,15,30,20">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="20"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
+            <StackPanel Margin="30,15,30,20">
 
-                <StackPanel Grid.Column="0">
-                    <Border Background="#12121f" CornerRadius="16" Padding="25" Margin="0,0,0,20">
-                        <Border.Effect>
-                            <DropShadowEffect Color="#000000" Opacity="0.3" BlurRadius="15" ShadowDepth="3" Direction="270"/>
-                        </Border.Effect>
+                <!-- 页头 -->
+                <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
+                        BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                        Padding="22,18" Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock Text="其他工具" FontSize="16" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                        <TextBlock Text="共 2 个实用工具 · 系统精简与软件卸载" FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <UniformGrid Columns="2" Margin="-6,0,-6,8">
+
+                    <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
+                            BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                            Padding="18" Margin="6">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-
-                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,15">
-                                <Border Width="48" Height="48" CornerRadius="12" Background="#1e1e35">
-                                    <Viewbox Width="26" Height="26">
-                                        <Canvas Width="24" Height="24">
-                                            <Path Fill="#f59e0b" Data="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M11,16H13V18H11V16M11,6H13V14H11V6Z"/>
-                                        </Canvas>
-                                    </Viewbox>
-                                </Border>
-                                <TextBlock Text="Win11Debloat" FontSize="18" FontWeight="Normal" Foreground="#ffffff" 
-                                           VerticalAlignment="Center" Margin="15,0,0,0"/>
+                            <TextBlock Grid.Row="0" Text="Win11Debloat" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Grid.Row="1" Text="Windows 11 精简工具，移除预装应用、禁用遥测和优化系统设置" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal">
+                                <Button Content="运行 Win11Debloat" Style="{StaticResource AccentButton}" Click="RunWin11Debloat_Click" Cursor="Hand"/>
                             </StackPanel>
-
-                            <TextBlock Grid.Row="1" Text="Windows 11 精简工具，移除预装应用、禁用遥测和优化系统设置" 
-                                       Foreground="#7a7a9a" FontSize="13" Margin="0,0,0,20" TextWrapping="Wrap"/>
-
-                            <Button Grid.Row="2" Content="运行Win11Debloat" HorizontalAlignment="Left" Cursor="Hand" Click="RunWin11Debloat_Click">
-                                <Button.Template>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border x:Name="ButtonBorder" Background="#f59e0b" CornerRadius="10" Padding="25,12">
-                                            <Border.Effect>
-                                                <DropShadowEffect Color="#f59e0b" Opacity="0.4" BlurRadius="12" ShadowDepth="0"/>
-                                            </Border.Effect>
-                                            <TextBlock Text="{TemplateBinding Content}" FontSize="13" 
-                                                       Foreground="#ffffff" FontWeight="Normal"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="ButtonBorder" Property="Background" Value="#fbbf24"/>
-                                            </Trigger>
-                                            <Trigger Property="IsPressed" Value="True">
-                                                <Setter TargetName="ButtonBorder" Property="Background" Value="#d97706"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Button.Template>
-                            </Button>
                         </Grid>
                     </Border>
-                </StackPanel>
 
-                <StackPanel Grid.Column="2">
-                    <Border Background="#12121f" CornerRadius="16" Padding="25" Margin="0,0,0,20">
-                        <Border.Effect>
-                            <DropShadowEffect Color="#000000" Opacity="0.3" BlurRadius="15" ShadowDepth="3" Direction="270"/>
-                        </Border.Effect>
+                    <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
+                            BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                            Padding="18" Margin="6">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-
-                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,15">
-                                <Border Width="48" Height="48" CornerRadius="12" Background="#1e1e35">
-                                    <Viewbox Width="26" Height="26">
-                                        <Canvas Width="24" Height="24">
-                                            <Path Fill="#ec4899" Data="M12,2C17.53,2 22,6.47 22,12C22,17.53 17.53,22 12,22C6.47,22 2,17.53 2,12C2,6.47 6.47,2 12,2M15.59,7L12,10.59L8.41,7L7,8.41L10.59,12L7,15.59L8.41,17L12,13.41L15.59,17L17,15.59L13.41,12L17,8.41L15.59,7Z"/>
-                                        </Canvas>
-                                    </Viewbox>
-                                </Border>
-                                <TextBlock Text="软件卸载" FontSize="18" FontWeight="Normal" Foreground="#ffffff" 
-                                           VerticalAlignment="Center" Margin="15,0,0,0"/>
+                            <TextBlock Grid.Row="0" Text="软件卸载" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Grid.Row="1" Text="使用 Geek 卸载工具彻底卸载软件" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal">
+                                <Button Content="打开卸载工具" Style="{StaticResource AccentButton}" Click="OpenGeekUninstaller_Click" Cursor="Hand"/>
                             </StackPanel>
-
-                            <TextBlock Grid.Row="1" Text="使用Geek卸载工具彻底卸载软件" 
-                                       Foreground="#7a7a9a" FontSize="13" Margin="0,0,0,20"/>
-
-                            <Button Grid.Row="2" Content="打开卸载工具" HorizontalAlignment="Left" Cursor="Hand" Click="OpenGeekUninstaller_Click">
-                                <Button.Template>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border x:Name="ButtonBorder" Background="#ec4899" CornerRadius="10" Padding="25,12">
-                                            <Border.Effect>
-                                                <DropShadowEffect Color="#ec4899" Opacity="0.4" BlurRadius="12" ShadowDepth="0"/>
-                                            </Border.Effect>
-                                            <TextBlock Text="{TemplateBinding Content}" FontSize="13" 
-                                                       Foreground="#ffffff" FontWeight="Normal"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="ButtonBorder" Property="Background" Value="#f472b6"/>
-                                            </Trigger>
-                                            <Trigger Property="IsPressed" Value="True">
-                                                <Setter TargetName="ButtonBorder" Property="Background" Value="#db2777"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Button.Template>
-                            </Button>
                         </Grid>
                     </Border>
-                </StackPanel>
-            </Grid>
+
+                </UniformGrid>
+
+            </StackPanel>
         </ScrollViewer>
     </Grid>
 </Page>
