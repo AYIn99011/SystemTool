@@ -10,6 +10,7 @@
     <!-- 强调色 -->
     <Color x:Key="AccentColor">#4CC2FF</Color>
     <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
+    <SolidColorBrush x:Key="AccentSoftBrush" Color="{StaticResource AccentColor}" Opacity="0.15"/>
     <SolidColorBrush x:Key="AccentHoverBrush" Color="#70CDFF"/>
     <SolidColorBrush x:Key="AccentPressedBrush" Color="#3AA8E0"/>
     <!-- 强调色上的文字（深色，保证对比度） -->
