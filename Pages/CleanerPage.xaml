@@ -35,7 +35,7 @@
                         <StackPanel Grid.Column="1" Margin="26,0,0,0" VerticalAlignment="Center">
                             <TextBlock Text="预估可清理：" FontSize="13"
                                        Foreground="{StaticResource TextSecondaryBrush}"/>
-                            <TextBlock x:Name="EstimateText" Text="正在扫描…" FontSize="34" FontWeight="Bold"
+                            <TextBlock x:Name="EstimateText" Text="点击右方按钮开始扫描" FontSize="34" FontWeight="Bold"
                                        Foreground="{StaticResource TextPrimaryBrush}" Margin="0,2,0,8"/>
                             <TextBlock x:Name="LastCleanText" Text="上次清理：--" FontSize="13"
                                        Foreground="{StaticResource TextSecondaryBrush}"/>

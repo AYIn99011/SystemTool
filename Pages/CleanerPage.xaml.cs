@@ -158,10 +158,10 @@ namespace SystemTool.Pages
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "SystemTool", "last_clean.txt");
 
-        private async void CleanerPage_Loaded(object sender, RoutedEventArgs e)
+        private void CleanerPage_Loaded(object sender, RoutedEventArgs e)
         {
             LoadLastCleanText();
-            await RunEstimateAsync();
+            // 不再自动扫描：由用户点击「一键扫描」手动触发
         }
 
         /// <summary>更新圆环进度（0~1）。圆心(60,60)，半径54，起点在12点钟方向。</summary>
