@@ -427,14 +427,21 @@ public static class SystemInfoHelper
                     }
                 }
             }
-            // CPU 硬件在但温度全 null：典型原因是 WinRing0 驱动被拦截（HVCI/内存完整性），GPU 走 NVAPI 不受影响
+            // CPU 硬件在但温度全 null：0.9.6 已改用 PawnIO 驱动读 MSR，但 PawnIO 需单独安装；
+            // 未安装时 \\?\GLOBALROOT\Device\PawnIO 不存在，所有读数静默失败。GPU 走 NVAPI 不受影响。
             if (cpuFound && cpuAllNull)
             {
+                bool pawnIoInstalled = false;
+                try { pawnIoInstalled = LibreHardwareMonitor.PawnIo.PawnIo.IsInstalled; } catch { }
                 object? hvci = Registry.GetValue(
                     @"HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity",
                     "Enabled", null);
-                sb.Append($"HVCI内存完整性={(hvci?.ToString() == "1" ? "开启(很可能拦截了测温驱动)" : "关闭/未知")}; ");
-                sb.Append("排查: 1)以管理员运行 2)Windows安全中心-设备安全-内核隔离-内存完整性 3)关闭冲突的测温软件后重试");
+                sb.Append($"PawnIO驱动={(pawnIoInstalled ? "已安装" : "未安装")}; ");
+                sb.Append($"HVCI内存完整性={(hvci?.ToString() == "1" ? "开启" : "关闭/未知")}; ");
+                if (!pawnIoInstalled)
+                    sb.Append("解决: 安装 PawnIO 2.2.0 (https://github.com/namazso/PawnIO.Setup/releases) 后重启，HVCI 可保持开启; ");
+                else
+                    sb.Append("排查: 1)以管理员运行 2)关闭冲突的测温软件后重试; ");
             }
             LogService.Instance.Warning(sb.ToString());
         }
