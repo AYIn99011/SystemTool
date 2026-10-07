@@ -198,17 +198,6 @@ namespace SystemTool.Windows
             StatusText.Text = $"共发现 {Shortcuts.Count} 个快捷方式";
         }
 
-        private void TitleBar_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-            if (e.LeftButton == System.Windows.Input.MouseButtonState.Pressed)
-                DragMove();
-        }
-
-        private void CloseButton_Click(object sender, RoutedEventArgs e)
-        {
-            Close();
-        }
-
         private void SelectAll_Click(object sender, RoutedEventArgs e)
         {
             foreach (var item in Shortcuts)

@@ -1,168 +1,75 @@
-﻿<Window x:Class="SystemTool.Windows.ShortcutCleanerWindow"
+<Window x:Class="SystemTool.Windows.ShortcutCleanerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="此电脑快捷方式清理" Height="550" Width="600"
-        WindowStartupLocation="CenterScreen"
-        Background="Transparent"
+        WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
-        WindowStyle="None"
-        AllowsTransparency="True"
-        FontFamily="Microsoft YaHei UI"
+        FontFamily="{StaticResource AppFontFamily}"
         TextOptions.TextFormattingMode="Ideal"
         TextOptions.TextRenderingMode="ClearType"
         UseLayoutRounding="True"
-        SnapsToDevicePixels="True">
+        SnapsToDevicePixels="True"
+        Background="{StaticResource SectionFillBrush}">
 
-    <Window.Resources>
-        <LinearGradientBrush x:Key="AccentGradient" StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#8b5cf6" Offset="0"/>
-            <GradientStop Color="#a78bfa" Offset="0.5"/>
-            <GradientStop Color="#8b5cf6" Offset="1"/>
-        </LinearGradientBrush>
-
-        <LinearGradientBrush x:Key="TitleBarGradient" StartPoint="0,0" EndPoint="0,1">
-            <GradientStop Color="#12121f" Offset="0"/>
-            <GradientStop Color="#0d0d18" Offset="1"/>
-        </LinearGradientBrush>
-    </Window.Resources>
-
-    <Border Background="#0a0a14" CornerRadius="12" Margin="10">
-        <Border.Effect>
-            <DropShadowEffect Color="#000000" Opacity="0.6" BlurRadius="20" ShadowDepth="0"/>
-        </Border.Effect>
+    <Border BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8"
+            Background="{StaticResource SectionFillBrush}" Margin="12" Padding="20">
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="40"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <Border Grid.Row="0" Background="{StaticResource TitleBarGradient}" CornerRadius="12,12,0,0"
-                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
-                <Grid Margin="15,0">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Viewbox Width="16" Height="16" Margin="0,0,8,0">
-                            <Canvas Width="24" Height="24">
-                                <Path Fill="{StaticResource AccentGradient}" Data="M19,3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3M10,17L5,12L6.41,10.59L10,14.17L17.59,6.58L19,8L10,17Z"/>
-                            </Canvas>
-                        </Viewbox>
-                        <TextBlock Text="此电脑快捷方式清理" FontSize="13" FontWeight="Normal" Foreground="#ffffff" VerticalAlignment="Center"/>
-                    </StackPanel>
-
-                    <Button x:Name="CloseButton" Width="36" Height="28" HorizontalAlignment="Right" Cursor="Hand" Click="CloseButton_Click">
-                        <Button.Template>
-                            <ControlTemplate TargetType="Button">
-                                <Border x:Name="BtnBorder" Background="Transparent" CornerRadius="4">
-                                    <Viewbox Width="10" Height="10">
-                                        <Canvas Width="24" Height="24">
-                                            <Path x:Name="Icon" Fill="#8b8ba0" Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/>
-                                        </Canvas>
-                                    </Viewbox>
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="BtnBorder" Property="Background" Value="#e94560"/>
-                                        <Setter TargetName="Icon" Property="Fill" Value="#ffffff"/>
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Button.Template>
-                    </Button>
-                </Grid>
-            </Border>
-
-            <StackPanel Grid.Row="1" Margin="20,15,20,0">
-                <TextBlock Text="以下是在「此电脑」中发现的快捷方式" FontSize="14" FontWeight="Normal" 
-                           Foreground="#ffffff" Margin="0,0,0,8"/>
-                <TextBlock Text="勾选要删除的快捷方式（盘符和系统文件夹不会显示）" FontSize="12" 
-                           Foreground="#7a7a9a" Margin="0,0,0,12"/>
+            <StackPanel Grid.Row="0" Margin="0,0,0,12">
+                <TextBlock Text="以下是在「此电脑」中发现的快捷方式" FontSize="16" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                <TextBlock Text="勾选要删除的快捷方式（盘符和系统文件夹不会显示）" FontSize="12"
+                           Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
             </StackPanel>
 
-            <Grid Grid.Row="2" Margin="20,0,20,0">
-                <Border Background="#12121f" CornerRadius="8">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="10">
-                        <ItemsControl x:Name="ShortcutsList">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Background="#1e1e35" CornerRadius="6" Margin="0,0,0,6" Padding="10">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected, Mode=TwoWay}" 
-                                                      VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding Name}" Foreground="#ffffff" FontSize="13" FontWeight="Normal"/>
-                                                <TextBlock Text="{Binding TargetPath}" Foreground="#7a7a9a" FontSize="11" 
-                                                           TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
-                                            </StackPanel>
-                                            <Image Grid.Column="2" Source="{Binding Icon}" Width="24" Height="24" 
-                                                   VerticalAlignment="Center" Margin="8,0,0,0"/>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </Border>
-            </Grid>
-
-            <Border Grid.Row="3" Background="#0d0d1a" CornerRadius="0,0,12,12" Padding="20,15">
-                <Grid>
-                    <TextBlock x:Name="StatusText" Text="" Foreground="#7a7a9a" FontSize="12" 
-                               VerticalAlignment="Center" HorizontalAlignment="Left"/>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Content="全选" Width="75" Height="32" Margin="0,0,8,0" Click="SelectAll_Click" Cursor="Hand">
-                            <Button.Template>
-                                <ControlTemplate TargetType="Button">
-                                    <Border x:Name="BtnBorder" Background="#3b3b5c" CornerRadius="6">
-                                        <TextBlock Text="{TemplateBinding Content}" Foreground="#ffffff" FontSize="12"
-                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </Border>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="BtnBorder" Property="Background" Value="#4a4a6c"/>
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Button.Template>
-                        </Button>
-                        <Button Content="取消全选" Width="75" Height="32" Margin="0,0,8,0" Click="DeselectAll_Click" Cursor="Hand">
-                            <Button.Template>
-                                <ControlTemplate TargetType="Button">
-                                    <Border x:Name="BtnBorder" Background="#3b3b5c" CornerRadius="6">
-                                        <TextBlock Text="{TemplateBinding Content}" Foreground="#ffffff" FontSize="12"
-                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </Border>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="BtnBorder" Property="Background" Value="#4a4a6c"/>
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Button.Template>
-                        </Button>
-                        <Button Content="删除选中" Width="90" Height="32" Click="DeleteSelected_Click" Cursor="Hand">
-                            <Button.Template>
-                                <ControlTemplate TargetType="Button">
-                                    <Border x:Name="ButtonBorder" Background="#8b5cf6" CornerRadius="6">
-                                        <TextBlock Text="{TemplateBinding Content}" Foreground="#ffffff" FontSize="12"
-                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </Border>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="ButtonBorder" Property="Background" Value="#a78bfa"/>
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Button.Template>
-                        </Button>
-                    </StackPanel>
-                </Grid>
+            <Border Grid.Row="1" Background="{StaticResource ControlFillBrush}" CornerRadius="8" Padding="10">
+                <ScrollViewer VerticalScrollBarVisibility="Hidden">
+                    <ItemsControl x:Name="ShortcutsList">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                              VerticalAlignment="Center" Margin="4,0,10,0"/>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="13"/>
+                                        <TextBlock Text="{Binding TargetPath}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11"
+                                                   TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                    <Image Grid.Column="2" Source="{Binding Icon}" Width="24" Height="24"
+                                           VerticalAlignment="Center" Margin="8,0,4,0"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
             </Border>
+
+            <Grid Grid.Row="2" Margin="0,12,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="StatusText" Text="" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"
+                           VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="全选" Width="84" Height="32" Margin="0,0,8,0" Cursor="Hand"
+                            Style="{StaticResource FluentButton}" Click="SelectAll_Click"/>
+                    <Button Content="取消全选" Width="84" Height="32" Margin="0,0,8,0" Cursor="Hand"
+                            Style="{StaticResource FluentButton}" Click="DeselectAll_Click"/>
+                    <Button Content="删除选中" Width="96" Height="32" Cursor="Hand"
+                            Style="{StaticResource AccentButton}" Click="DeleteSelected_Click"/>
+                </StackPanel>
+            </Grid>
         </Grid>
     </Border>
 </Window>

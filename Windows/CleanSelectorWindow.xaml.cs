@@ -1,7 +1,5 @@
 using System.Collections.ObjectModel;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Input;
 using SystemTool.Models;
 
 namespace SystemTool.Windows
@@ -16,20 +14,6 @@ namespace SystemTool.Windows
             InitializeComponent();
             AllItems = new ObservableCollection<CleanItem>(groups.SelectMany(g => g.Items));
             DataContext = this;
-        }
-
-        private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            if (e.LeftButton == MouseButtonState.Pressed)
-            {
-                DragMove();
-            }
-        }
-
-        private void CloseButton_Click(object sender, RoutedEventArgs e)
-        {
-            DialogResult = false;
-            Close();
         }
 
         private void SelectAll_Click(object sender, RoutedEventArgs e)
