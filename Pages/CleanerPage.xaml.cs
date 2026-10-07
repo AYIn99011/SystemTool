@@ -1668,48 +1668,58 @@ namespace SystemTool.Pages
         private List<string> GetWeChatCachePaths()
         {
             var paths = new List<string>();
-            var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 
-            var weChatFilesPaths = new[]
+            // 默认位置 + 各盘符根目录自适应（微信支持更改文件存储位置，如 D:\WeChat Files）
+            var roots = new List<string>
             {
                 Path.Combine(documentsPath, "WeChat Files"),
                 Path.Combine(documentsPath, "xwechat_files"),
             };
-
-            foreach (var weChatFilesPath in weChatFilesPaths)
+            foreach (var drive in DriveInfo.GetDrives())
             {
-                if (Directory.Exists(weChatFilesPath))
+                try
                 {
-                    try
+                    if (!drive.IsReady || (drive.DriveType != DriveType.Fixed && drive.DriveType != DriveType.Removable))
+                        continue;
+                    roots.Add(Path.Combine(drive.RootDirectory.FullName, "WeChat Files"));
+                    roots.Add(Path.Combine(drive.RootDirectory.FullName, "xwechat_files"));
+                }
+                catch { }
+            }
+
+            foreach (var weChatFilesPath in roots.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                if (!Directory.Exists(weChatFilesPath))
+                    continue;
+                try
+                {
+                    foreach (var userDir in Directory.GetDirectories(weChatFilesPath))
                     {
-                        foreach (var userDir in Directory.GetDirectories(weChatFilesPath))
+                        var dirName = Path.GetFileName(userDir);
+                        if (dirName == "All Users" || dirName == "Applet")
+                            continue;
+
+                        var cacheSubPaths = new[]
                         {
-                            var dirName = Path.GetFileName(userDir);
-                            if (dirName == "All Users" || dirName == "Applet")
-                                continue;
+                            Path.Combine(userDir, "FileStorage", "Cache"),
+                            Path.Combine(userDir, "FileStorage", "Temp"),
+                        };
 
-                            var cacheSubPaths = new[]
+                        foreach (var cachePath in cacheSubPaths)
+                        {
+                            if (Directory.Exists(cachePath) && !paths.Contains(cachePath, StringComparer.OrdinalIgnoreCase))
                             {
-                                Path.Combine(userDir, "FileStorage", "Cache"),
-                                Path.Combine(userDir, "FileStorage", "Temp"),
-                            };
-
-                            foreach (var cachePath in cacheSubPaths)
-                            {
-                                if (Directory.Exists(cachePath))
-                                {
-                                    paths.Add(cachePath);
-                                }
+                                paths.Add(cachePath);
                             }
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        LogService.Instance.Warning("[CleanerPage.GetWeChatCachePaths] 枚举目录失败", ex);
-                    }
+                }
+                catch (Exception ex)
+                {
+                    LogService.Instance.Warning("[CleanerPage.GetWeChatCachePaths] 枚举目录失败", ex);
                 }
             }
 
@@ -2064,6 +2074,23 @@ namespace SystemTool.Pages
                 if (Directory.Exists(path))
                 {
                     paths.Add(path);
+                }
+            }
+
+            // 自适应：各盘符根目录下的 Douyin\Cache
+            foreach (var drive in DriveInfo.GetDrives())
+            {
+                try
+                {
+                    if (!drive.IsReady || (drive.DriveType != DriveType.Fixed && drive.DriveType != DriveType.Removable))
+                        continue;
+                    var p = Path.Combine(drive.RootDirectory.FullName, "Douyin", "Cache");
+                    if (Directory.Exists(p) && !paths.Contains(p, StringComparer.OrdinalIgnoreCase))
+                        paths.Add(p);
+                }
+                catch (Exception ex)
+                {
+                    LogService.Instance.Warning("[CleanerPage.GetDouyinCachePaths] 枚举盘符失败", ex);
                 }
             }
 
