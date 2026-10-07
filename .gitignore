@@ -1,0 +1,11 @@
+# Build results
+bin/
+obj/
+.vs/
+*.user
+*.suo
+# NuGet
+*.nupkg
+# OS
+.DS_Store
+Thumbs.db

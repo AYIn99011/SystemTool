@@ -1,0 +1,332 @@
+<Page x:Class="SystemTool.Pages.DeviceInfoPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="设备信息"
+      Background="Transparent"
+      FontFamily="{StaticResource AppFontFamily}"
+      TextOptions.TextFormattingMode="Display"
+      TextOptions.TextRenderingMode="ClearType"
+      UseLayoutRounding="True"
+      SnapsToDevicePixels="True">
+
+    <!-- Win11 设置式布局：Mica 统一打底，分组只做极淡提亮 + 细分割线 -->
+    <ScrollViewer VerticalScrollBarVisibility="Hidden" Background="Transparent">
+        <Grid Margin="32,4,32,24" MaxWidth="1100">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="24"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 左列 -->
+            <StackPanel Grid.Column="0">
+
+                <!-- 处理器 -->
+                <TextBlock Text="处理器" Style="{StaticResource SectionTitle}"/>
+                <Border Background="{StaticResource SectionFillBrush}"
+                        BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                        CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
+                    <StackPanel>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="型号" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="CpuNameText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                        </Grid>
+                        <Border Height="1" Background="{StaticResource DividerBrush}"/>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="核心" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="CpuCoresText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                        </Grid>
+                        <Border Height="1" Background="{StaticResource DividerBrush}"/>
+                        <Grid Margin="0,8,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="使用率" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="CpuUsageText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                            <ProgressBar x:Name="CpuUsageBar" Grid.Row="1" Grid.ColumnSpan="2"
+                                         Style="{StaticResource FluentProgressBar}"
+                                         Minimum="0" Maximum="100" Value="0" Margin="0,8,0,2"/>
+                        </Grid>
+                        <Border Height="1" Background="{StaticResource DividerBrush}"/>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="温度" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="CpuTempText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- 内存 -->
+                <TextBlock Text="内存" Style="{StaticResource SectionTitle}"/>
+                <Border Background="{StaticResource SectionFillBrush}"
+                        BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                        CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
+                    <StackPanel>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="容量" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="MemoryTotalText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                        </Grid>
+                        <Border Height="1" Background="{StaticResource DividerBrush}"/>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="已用" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="MemoryUsedText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                        </Grid>
+                        <Border Height="1" Background="{StaticResource DividerBrush}"/>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="类型" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="MemoryTypeText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                        </Grid>
+                        <Border Height="1" Background="{StaticResource DividerBrush}"/>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="频率" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="MemorySpeedText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                        </Grid>
+                        <Border Height="1" Background="{StaticResource DividerBrush}"/>
+                        <Grid Margin="0,8,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="使用率" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="MemoryUsageText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                            <ProgressBar x:Name="MemoryUsageBar" Grid.Row="1" Grid.ColumnSpan="2"
+                                         Style="{StaticResource FluentProgressBar}"
+                                         Minimum="0" Maximum="100" Value="0" Margin="0,8,0,2"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- 显卡 -->
+                <TextBlock Text="显卡" Style="{StaticResource SectionTitle}"/>
+                <Border Background="{StaticResource SectionFillBrush}"
+                        BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                        CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
+                    <StackPanel>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="型号" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="GpuNameText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                        </Grid>
+                        <Border Height="1" Background="{StaticResource DividerBrush}"/>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="显存" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="GpuMemoryText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                        </Grid>
+                        <Border Height="1" Background="{StaticResource DividerBrush}"/>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="驱动" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="GpuDriverText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                        </Grid>
+                        <Border Height="1" Background="{StaticResource DividerBrush}"/>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="温度" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="GpuTempText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                        </Grid>
+                        <Border Height="1" Background="{StaticResource DividerBrush}"/>
+                        <Grid Margin="0,8,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="显存占用" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="GpuMemoryUsageText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                            <ProgressBar x:Name="GpuMemoryUsageBar" Grid.Row="1" Grid.ColumnSpan="2"
+                                         Style="{StaticResource FluentProgressBar}"
+                                         Minimum="0" Maximum="100" Value="0" Margin="0,8,0,2"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- 右列 -->
+            <StackPanel Grid.Column="2">
+
+                <!-- 主板 -->
+                <TextBlock Text="主板" Style="{StaticResource SectionTitle}"/>
+                <Border Background="{StaticResource SectionFillBrush}"
+                        BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                        CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
+                    <StackPanel>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="型号" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="MotherboardText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                        </Grid>
+                        <Border Height="1" Background="{StaticResource DividerBrush}"/>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="BIOS" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="BiosText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- 操作系统 -->
+                <TextBlock Text="操作系统" Style="{StaticResource SectionTitle}"/>
+                <Border Background="{StaticResource SectionFillBrush}"
+                        BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                        CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
+                    <StackPanel>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="版本" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="OsVersionText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                        </Grid>
+                        <Border Height="1" Background="{StaticResource DividerBrush}"/>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="内部版本" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="OsBuildText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                        </Grid>
+                        <Border Height="1" Background="{StaticResource DividerBrush}"/>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="架构" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="OsArchitectureText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                        </Grid>
+                        <Border Height="1" Background="{StaticResource DividerBrush}"/>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="安装日期" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="OsInstallDateText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- 显示器 -->
+                <TextBlock Text="显示器" Style="{StaticResource SectionTitle}"/>
+                <Border Background="{StaticResource SectionFillBrush}"
+                        BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                        CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
+                    <StackPanel>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="型号" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="MonitorNameText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                        </Grid>
+                        <Border Height="1" Background="{StaticResource DividerBrush}"/>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="分辨率" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="MonitorResolutionText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                        </Grid>
+                        <Border Height="1" Background="{StaticResource DividerBrush}"/>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="刷新率" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="MonitorRefreshRateText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- 硬盘 -->
+                <TextBlock Text="硬盘" Style="{StaticResource SectionTitle}"/>
+                <Border Background="{StaticResource SectionFillBrush}"
+                        BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                        CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
+                    <StackPanel>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="总容量" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="DiskTotalText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                        </Grid>
+                        <Border Height="1" Background="{StaticResource DividerBrush}"/>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="使用情况" Style="{StaticResource InfoLabel}"/>
+                            <TextBlock x:Name="DiskUsageText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</Page>

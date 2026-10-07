@@ -1,0 +1,56 @@
+name: Build & Package (net10.0-windows)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore & Build (Release, win-x64)
+        run: dotnet build -c Release -r win-x64 --self-contained false --no-incremental
+
+      - name: Install Obfuscar
+        run: dotnet tool install -g obfuscar.console
+
+      - name: Obfuscate
+        run: obfuscar.console obfuscar.xml
+
+      - name: Publish single file
+        run: >
+          dotnet publish -c Release -r win-x64 --self-contained false
+          -p:PublishSingleFile=true -p:SelfContained=false -p:PublishSelfContained=false
+          -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=false
+          -p:DebugType=none -p:DebugSymbols=false --no-build
+
+      - name: Replace with obfuscated DLL
+        run: |
+          $publishPath = "bin\Release\net10.0-windows\win-x64\publish"
+          $obfuscatedDll = "bin\Release\net10.0-windows\obfuscated\SystemTool.dll"
+          if (Test-Path $obfuscatedDll) {
+            Copy-Item -Path $obfuscatedDll -Destination "$publishPath\SystemTool.dll" -Force
+            Write-Host "Obfuscated DLL copied."
+          } else {
+            Write-Host "WARNING: obfuscated DLL not found, using original." -ForegroundColor Yellow
+          }
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SystemTool-net10-win-x64
+          path: bin/Release/net10.0-windows/win-x64/publish/

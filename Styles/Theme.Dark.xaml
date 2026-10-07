@@ -1,0 +1,49 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ============ Win11 Fluent 深色设计语言 ============ -->
+    <!-- 背景：Mica 云母统一打底，界面只做极淡分层，杜绝卡片与背景打架 -->
+
+    <!-- 字体 -->
+    <FontFamily x:Key="AppFontFamily">Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI</FontFamily>
+
+    <!-- 强调色 -->
+    <Color x:Key="AccentColor">#4CC2FF</Color>
+    <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="#70CDFF"/>
+    <SolidColorBrush x:Key="AccentPressedBrush" Color="#3AA8E0"/>
+    <!-- 强调色上的文字（深色，保证对比度） -->
+    <SolidColorBrush x:Key="OnAccentBrush" Color="#00324A"/>
+
+    <!-- 文字 -->
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#B3FFFFFF"/>
+    <SolidColorBrush x:Key="TextTertiaryBrush" Color="#80FFFFFF"/>
+    <SolidColorBrush x:Key="TextDisabledBrush" Color="#5DFFFFFF"/>
+
+    <!-- 分层填充（Mica 之上的极淡提亮） -->
+    <!-- 导航栏底 -->
+    <SolidColorBrush x:Key="NavBackgroundBrush" Color="#4D000000"/>
+    <!-- 内容分组：只比 Mica 亮一点点 -->
+    <SolidColorBrush x:Key="SectionFillBrush" Color="#0AFFFFFF"/>
+    <SolidColorBrush x:Key="SectionHoverBrush" Color="#14FFFFFF"/>
+    <!-- 控件默认 / 悬停 / 按下 -->
+    <SolidColorBrush x:Key="ControlFillBrush" Color="#0DFFFFFF"/>
+    <SolidColorBrush x:Key="ControlHoverBrush" Color="#16FFFFFF"/>
+    <SolidColorBrush x:Key="ControlPressedBrush" Color="#0AFFFFFF"/>
+
+    <!-- 边框与分割线 -->
+    <SolidColorBrush x:Key="BorderSubtleBrush" Color="#14FFFFFF"/>
+    <SolidColorBrush x:Key="DividerBrush" Color="#12FFFFFF"/>
+
+    <!-- 状态色 -->
+    <SolidColorBrush x:Key="SuccessBrush" Color="#6CCB5F"/>
+    <SolidColorBrush x:Key="WarningBrush" Color="#FCE100"/>
+    <SolidColorBrush x:Key="WarningDarkBrush" Color="#C7A500"/>
+    <SolidColorBrush x:Key="ErrorBrush" Color="#FF7A7A"/>
+    <SolidColorBrush x:Key="InfoBrush" Color="#4CC2FF"/>
+
+    <!-- Win10 降级用纯色背景 -->
+    <SolidColorBrush x:Key="FallbackBackgroundBrush" Color="#202020"/>
+
+</ResourceDictionary>

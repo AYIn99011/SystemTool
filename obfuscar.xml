@@ -1,0 +1,22 @@
+<?xml version='1.0'?>
+<Obfuscator>
+  <Var name="InPath" value="bin\Release\net10.0-windows\win-x64" />
+  <Var name="OutPath" value="bin\Release\net10.0-windows\obfuscated" />
+  <Var name="KeepPublicApi" value="true" />
+  <Var name="HidePrivateApi" value="true" />
+  <Var name="RenameProperties" value="true" />
+  <Var name="RenameEvents" value="true" />
+  <Var name="RenameFields" value="true" />
+  <Var name="UseUnicodeNames" value="true" />
+  <Var name="HideStrings" value="false" />
+  <Var name="OptimizeMethods" value="true" />
+  <Var name="SuppressIldasm" value="false" />
+  <Module file="$(InPath)\SystemTool.dll">
+    <SkipType name="SystemTool.App" />
+    <SkipType name="SystemTool.MainWindow" />
+    <SkipType name="SystemTool.Pages.*" inherits="true" />
+    <SkipType name="SystemTool.Windows.*" inherits="true" />
+    <SkipType name="SystemTool.Converters.*" inherits="true" />
+    <SkipType name="SystemTool.Services.LogService" />
+  </Module>
+</Obfuscator>
