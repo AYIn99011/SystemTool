@@ -21,28 +21,41 @@ public static class ThemeManager
     private static ResourceDictionary? _darkDict;
     private static ResourceDictionary? _lightDict;
 
+    private static ResourceDictionary? _liveThemeDict;
+
     /// <summary>
     /// 应用启动时调用（必须在主窗口创建之前）：
-    /// Application 级资源字典中的 SolidColorBrush 会被 WPF 自动冻结，
-    /// 这里把冻结的画刷替换为可写的克隆，否则原地换肤改 Color 时会抛
-    /// InvalidOperationException，导致整个 ApplyTheme 中止（换肤、DWM 背景都不生效）。
+    /// 用全新加载的主题字典替换 App.xaml 预置的那个——预置字典的画刷会被 WPF
+    /// 冻结，原地换肤改 Color 会抛 InvalidOperationException，导致整个 ApplyTheme
+    /// 中止（换肤、DWM 背景、窗口背景全都不生效，窗口一片白）。
+    /// 新字典的所有画刷逐个确保可写；此时尚无界面元素，不存在旧引用残留问题。
     /// </summary>
-    public static void PrepareTheme()
+    public static void InitializeTheme()
     {
         try
         {
-            var live = FindLiveThemeDict();
-            if (live == null) return;
-            foreach (var key in live.Keys.OfType<object>().ToList())
+            bool light = IsLightTheme();
+            var fresh = LoadThemeDict(light ? "Theme.Light.xaml" : "Theme.Dark.xaml");
+            // BAML 加载的画刷可能被冻结，Clone() 返回未冻结的可写副本
+            foreach (var key in fresh.Keys.OfType<object>().ToList())
             {
-                // Clone() 返回未冻结的可写副本；此时尚无界面元素引用旧画刷，直接替换即可
-                if (live[key] is SolidColorBrush b && b.IsFrozen)
-                    live[key] = b.Clone();
+                if (fresh[key] is SolidColorBrush b && b.IsFrozen)
+                    fresh[key] = b.Clone();
             }
+
+            var dicts = Application.Current.Resources.MergedDictionaries;
+            foreach (var d in dicts.Where(d => d.Source != null &&
+                (d.Source.OriginalString.Contains("Theme.Dark.xaml") ||
+                 d.Source.OriginalString.Contains("Theme.Light.xaml"))).ToList())
+            {
+                dicts.Remove(d);
+            }
+            dicts.Insert(0, fresh);
+            _liveThemeDict = fresh;
         }
         catch (Exception ex)
         {
-            LogService.Instance.Warning("[ThemeManager] 预处理主题画刷失败", ex);
+            LogService.Instance.Warning("[ThemeManager] 初始化主题失败", ex);
         }
     }
 
@@ -70,6 +83,8 @@ public static class ThemeManager
 
     private static ResourceDictionary? FindLiveThemeDict()
     {
+        // 优先用 InitializeTheme 登记的实例（LoadComponent 加载的字典 Source 可能为 null）
+        if (_liveThemeDict != null) return _liveThemeDict;
         return Application.Current.Resources.MergedDictionaries
             .FirstOrDefault(d => d.Source != null &&
                 (d.Source.OriginalString.Contains("Theme.Dark.xaml") ||
@@ -100,7 +115,14 @@ public static class ThemeManager
                         target[key] is SolidColorBrush targetBrush)
                     {
                         if (liveBrush.Color != targetBrush.Color)
-                            liveBrush.Color = targetBrush.Color;
+                        {
+                            // 正常情况直接原地改色（已创建的界面引用同一对象，实时生效）；
+                            // 兜底：万一画刷被冻结则替换条目（已创建元素保持旧色，好过整个换肤中止）
+                            if (liveBrush.IsFrozen)
+                                live[key] = new SolidColorBrush(targetBrush.Color);
+                            else
+                                liveBrush.Color = targetBrush.Color;
+                        }
                     }
                     else if (live[key] is Color && target[key] is Color targetColor)
                     {
