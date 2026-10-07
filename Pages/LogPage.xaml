@@ -4,7 +4,7 @@
       xmlns:Services="clr-namespace:SystemTool.Services"
       Title="应用日志"
       Background="Transparent"
-      TextOptions.TextFormattingMode="Display"
+      TextOptions.TextFormattingMode="Ideal"
       TextOptions.TextRenderingMode="ClearType"
       UseLayoutRounding="True"
       SnapsToDevicePixels="True">

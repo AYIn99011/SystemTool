@@ -8,7 +8,7 @@
         WindowStyle="None"
         AllowsTransparency="True"
         FontFamily="Microsoft YaHei UI"
-        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextFormattingMode="Ideal"
         TextOptions.TextRenderingMode="ClearType"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True">
