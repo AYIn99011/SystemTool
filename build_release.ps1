@@ -34,10 +34,10 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "`n[5/5] Replacing with obfuscated DLL..." -ForegroundColor Yellow
 $publishPath = "bin\Release\net10.0-windows\win-x64\publish"
-$obfuscatedDll = "bin\Release\net10.0-windows\obfuscated\SystemTool.dll"
+$obfuscatedDll = "bin\Release\net10.0-windows\obfuscated\系统工具箱.dll"
 
 if (Test-Path $obfuscatedDll) {
-    Copy-Item -Path $obfuscatedDll -Destination "$publishPath\SystemTool.dll" -Force
+    Copy-Item -Path $obfuscatedDll -Destination "$publishPath\系统工具箱.dll" -Force
     Write-Host "Obfuscated DLL copied successfully!" -ForegroundColor Green
 } else {
     Write-Host "Warning: Obfuscated DLL not found, using original DLL" -ForegroundColor Yellow
@@ -46,7 +46,7 @@ if (Test-Path $obfuscatedDll) {
 $outputPath = Join-Path $projectPath $publishPath
 Write-Host "`n========================================" -ForegroundColor Cyan
 Write-Host "Build completed successfully!" -ForegroundColor Green
-Write-Host "Output: $outputPath\SystemTool.exe" -ForegroundColor White
+Write-Host "Output: $outputPath\系统工具箱.exe" -ForegroundColor White
 Write-Host "========================================" -ForegroundColor Cyan
 
 Get-ChildItem -Path $publishPath -Filter "*.exe" | ForEach-Object {

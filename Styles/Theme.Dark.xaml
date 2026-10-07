@@ -31,6 +31,9 @@
     <!-- 控件默认 / 悬停 / 按下 -->
     <SolidColorBrush x:Key="ControlFillBrush" Color="#0DFFFFFF"/>
     <SolidColorBrush x:Key="ControlHoverBrush" Color="#16FFFFFF"/>
+    <!-- 标题栏按钮悬停/按下：浅色用深色罩、深色用浅色罩 -->
+    <SolidColorBrush x:Key="CaptionHoverBrush" Color="#14FFFFFF"/>
+    <SolidColorBrush x:Key="CaptionPressedBrush" Color="#0DFFFFFF"/>
     <!-- 导航选中框：比侧栏更不透，做出"框内比框外更糊"的磨砂感 -->
     <SolidColorBrush x:Key="NavSelectedBrush" Color="#3DFFFFFF"/>
     <SolidColorBrush x:Key="ControlPressedBrush" Color="#0AFFFFFF"/>

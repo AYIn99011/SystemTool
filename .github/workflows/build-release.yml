@@ -41,9 +41,9 @@ jobs:
       - name: Replace with obfuscated DLL
         run: |
           $publishPath = "bin\Release\net10.0-windows\win-x64\publish"
-          $obfuscatedDll = "bin\Release\net10.0-windows\obfuscated\SystemTool.dll"
+          $obfuscatedDll = "bin\Release\net10.0-windows\obfuscated\系统工具箱.dll"
           if (Test-Path $obfuscatedDll) {
-            Copy-Item -Path $obfuscatedDll -Destination "$publishPath\SystemTool.dll" -Force
+            Copy-Item -Path $obfuscatedDll -Destination "$publishPath\系统工具箱.dll" -Force
             Write-Host "Obfuscated DLL copied."
           } else {
             Write-Host "WARNING: obfuscated DLL not found, using original." -ForegroundColor Yellow

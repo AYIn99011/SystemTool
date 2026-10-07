@@ -41,6 +41,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         Loaded += MainWindow_Loaded;
         SourceInitialized += MainWindow_SourceInitialized;
+        StateChanged += (s, e) => UpdateMaximizeGlyph();
         InitUpdateLogs();
         ApplyFontScale(); // 默认 110%，启动即生效
     }
@@ -254,6 +255,15 @@ public partial class MainWindow : Window
             WindowState = WindowState.Maximized;
     }
 
+    /// <summary>最大化/还原图标跟随窗口状态切换（拖拽到屏幕顶部等操作也会触发）。</summary>
+    private void UpdateMaximizeGlyph()
+    {
+        bool maximized = WindowState == WindowState.Maximized;
+        MaximizeGlyph.Visibility = maximized ? Visibility.Collapsed : Visibility.Visible;
+        RestoreGlyph.Visibility = maximized ? Visibility.Visible : Visibility.Collapsed;
+        MaximizeButton.ToolTip = maximized ? "还原" : "最大化";
+    }
+
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
         Helpers.SystemInfoHelper.Cleanup();
@@ -335,6 +345,22 @@ public partial class MainWindow : Window
         catch
         {
             MessageBox.Show("无法打开链接，请手动访问：https://qm.qq.com/q/VQeAVeacUe", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void GitHubButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "https://github.com/AYIn99011/SystemTool",
+                UseShellExecute = true
+            });
+        }
+        catch
+        {
+            MessageBox.Show("无法打开链接", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

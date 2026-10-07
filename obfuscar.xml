@@ -11,7 +11,7 @@
   <Var name="HideStrings" value="false" />
   <Var name="OptimizeMethods" value="true" />
   <Var name="SuppressIldasm" value="false" />
-  <Module file="$(InPath)\SystemTool.dll">
+  <Module file="$(InPath)\系统工具箱.dll">
     <SkipType name="SystemTool.App" />
     <SkipType name="SystemTool.MainWindow" />
     <SkipType name="SystemTool.Pages.*" inherits="true" />

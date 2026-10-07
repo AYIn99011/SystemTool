@@ -3,6 +3,9 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- 输出程序名：系统工具箱.exe；命名空间保持 SystemTool 不变 -->
+    <AssemblyName>系统工具箱</AssemblyName>
+    <RootNamespace>SystemTool</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>

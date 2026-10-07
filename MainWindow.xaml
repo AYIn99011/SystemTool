@@ -45,14 +45,30 @@
 
             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Stretch">
                 <Button x:Name="MinimizeButton" Style="{StaticResource CaptionButton}"
-                        Content="&#xE921;" Click="MinimizeButton_Click"
-                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                        Click="MinimizeButton_Click" ToolTip="最小化"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Path Data="M 2 6 H 10" StrokeThickness="1.2" SnapsToDevicePixels="True"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                </Button>
                 <Button x:Name="MaximizeButton" Style="{StaticResource CaptionButton}"
-                        Content="&#xE922;" Click="MaximizeButton_Click"
-                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                        Click="MaximizeButton_Click" ToolTip="最大化"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Grid Width="12" Height="12">
+                        <Path x:Name="MaximizeGlyph" Data="M 2.5 2.5 H 9.5 V 9.5 H 2.5 Z"
+                              StrokeThickness="1.2" SnapsToDevicePixels="True"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                        <Path x:Name="RestoreGlyph" Data="M 2.5 4.5 H 7.5 V 9.5 H 2.5 Z M 4.5 4.5 V 2.5 H 9.5 V 7.5 H 7.5"
+                              StrokeThickness="1.2" SnapsToDevicePixels="True" Visibility="Collapsed"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                    </Grid>
+                </Button>
                 <Button x:Name="CloseButton" Style="{StaticResource CaptionCloseButton}"
-                        Content="&#xE8BB;" Click="CloseButton_Click"
-                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                        Click="CloseButton_Click" ToolTip="关闭"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Path Data="M 2.5 2.5 L 9.5 9.5 M 9.5 2.5 L 2.5 9.5" StrokeThickness="1.2"
+                          SnapsToDevicePixels="True"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                </Button>
             </StackPanel>
         </Grid>
 
@@ -167,6 +183,8 @@
                                            Margin="8,0,0,0" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Border>
+                        <Button x:Name="GitHubButton" Style="{StaticResource FluentButton}"
+                                Content="GitHub 项目地址" Click="GitHubButton_Click" Margin="0,0,0,8"/>
                         <Button x:Name="JoinQQGroupButton" Style="{StaticResource FluentButton}"
                                 Content="加入用户交流群" Click="JoinQQGroupButton_Click"/>
                         <!-- 字体大小调节：整体缩放界面，窗口等比缩放 -->
