@@ -46,13 +46,13 @@ namespace SystemTool.Services
         public void Error(string message, Exception? ex) =>
             Log($"{message}（{ex?.GetType().Name}: {ex?.Message}）", LogLevel.Error);
 
-        public void AddUpdateLog(string version, string content)
+        public void AddUpdateLog(string version, string date, string content)
         {
             Application.Current?.Dispatcher.BeginInvoke(() =>
             {
                 UpdateLogs.Insert(0, new UpdateLogEntry
                 {
-                    Date = DateTime.Now.ToString("yyyy-MM-dd"),
+                    Date = date,
                     Version = version,
                     Content = content
                 });

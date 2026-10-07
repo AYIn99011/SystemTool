@@ -47,8 +47,10 @@ public partial class MainWindow : Window
 
     private void InitUpdateLogs()
     {
-        LogService.Instance.AddUpdateLog("v1.1.0", "• 设备信息页面大改：添加CPU/内存/GPU使用率进度条显示\n• 添加CPU和GPU温度实时监控\n• 添加内存频率和类型信息\n• 添加显示器信息\n• 多线程并行读取硬件数据\n• 卡片布局优化，左右对齐\n• 更换设备信息页面图标");
-        LogService.Instance.AddUpdateLog("v1.0.0", "• 此版本为第一个正式版：修复窗口拖动问题 字体渲染问题");
+        // 注意：Insert(0) 插到最前，所以按从旧到新调用，最终新的显示在上面
+        LogService.Instance.AddUpdateLog("v1.0.0", "2026-08-20", "• 此版本为第一个正式版：修复窗口拖动问题 字体渲染问题");
+        LogService.Instance.AddUpdateLog("v1.1.0", "2026-10-05", "• 设备信息页面大改：添加CPU/内存/GPU使用率进度条显示\n• 添加CPU和GPU温度实时监控\n• 添加内存频率和类型信息\n• 添加显示器信息\n• 多线程并行读取硬件数据\n• 卡片布局优化，左右对齐\n• 更换设备信息页面图标");
+        LogService.Instance.AddUpdateLog("v1.2.0", "2026-10-07", "• 清理页面重做：顶部汇总卡片（一键扫描/清理、上次清理时间）、11 项清理范围可选、每项显示可清理大小\n• 扫描逻辑完善：微信/抖音/QQ音乐/网易云/酷狗多盘符自适应查找，浏览器多 Profile，补全缩略图与图标缓存路径\n• 修复：窗口缩放后部分页面文字发糊（统一 Ideal 文本渲染）\n• 修复：CPU 温度曾误显示主板热区温度，现读不到显示 --；改用 PawnIO 驱动，缺失时启动提示安装（内置安装包，无需联网）\n• 修复：WMI 温度查询失败每秒刷屏日志\n• 扫描跳过的无权限目录现记录具体名称，并跳过软链接\n• 修复：更新日志日期全部显示当天的问题\n• 新增 README 项目说明");
     }
 
     private void MainWindow_SourceInitialized(object? sender, EventArgs e)
