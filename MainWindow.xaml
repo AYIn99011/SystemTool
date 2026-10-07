@@ -45,11 +45,14 @@
 
             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Stretch">
                 <Button x:Name="MinimizeButton" Style="{StaticResource CaptionButton}"
-                        Content="&#xE921;" Click="MinimizeButton_Click"/>
+                        Content="&#xE921;" Click="MinimizeButton_Click"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
                 <Button x:Name="MaximizeButton" Style="{StaticResource CaptionButton}"
-                        Content="&#xE922;" Click="MaximizeButton_Click"/>
+                        Content="&#xE922;" Click="MaximizeButton_Click"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
                 <Button x:Name="CloseButton" Style="{StaticResource CaptionCloseButton}"
-                        Content="&#xE8BB;" Click="CloseButton_Click"/>
+                        Content="&#xE8BB;" Click="CloseButton_Click"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
             </StackPanel>
         </Grid>
 
