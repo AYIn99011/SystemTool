@@ -322,11 +322,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private void AdminStatus_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
-    {
-        MessageBox.Show("当前已获取管理员权限，可以正常使用所有功能。", "权限状态", MessageBoxButton.OK, MessageBoxImage.Information);
-    }
-
     private void JoinGroup_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         try

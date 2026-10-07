@@ -46,32 +46,40 @@
                     </Grid>
                 </Border>
 
-                <!-- 高级清理（独立大功能） -->
-                <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12" Padding="20,16" Margin="0,0,0,16">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <Border Width="44" Height="44" CornerRadius="10" Background="#22d3ee">
-                            <Viewbox Width="24" Height="24">
-                                <Canvas Width="24" Height="24">
-                                    <Path Fill="#FFFFFF" Data="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M12,6A6,6 0 0,1 18,12A6,6 0 0,1 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6M12,8A4,4 0 0,0 8,12A4,4 0 0,0 12,16A4,4 0 0,0 16,12A4,4 0 0,0 12,8Z"/>
-                                </Canvas>
-                            </Viewbox>
+                <!-- 高级清理：内嵌展开区（与一键清理范围同样式） -->
+                <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12" Padding="18,14" Margin="0,0,0,16">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="高级清理" FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="AdvancedSummaryText" Grid.Column="1" Text="已选择 0 / 0 项"
+                                       FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
+                                       VerticalAlignment="Center" Margin="12,0,0,0"/>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button x:Name="AdvancedSelectAllButton" Content="全选" Style="{StaticResource FluentButton}"
+                                        Padding="16,2" MinHeight="28" FontSize="12" Margin="0,0,8,0"
+                                        Click="AdvancedSelectAllButton_Click" Cursor="Hand"/>
+                                <Button x:Name="AdvancedClearButton" Content="清空" Style="{StaticResource FluentButton}"
+                                        Padding="16,2" MinHeight="28" FontSize="12" Margin="0,0,8,0"
+                                        Click="AdvancedClearButton_Click" Cursor="Hand"/>
+                                <ToggleButton x:Name="AdvancedToggle" Content="收起 ▴" IsChecked="True"
+                                              Style="{StaticResource FluentToggleButton}" Margin="0,0,8,0"
+                                              Click="AdvancedToggle_Click"/>
+                                <Button x:Name="AdvancedStartButton" Content="开始清理" Style="{StaticResource AccentButton}"
+                                        Padding="16,2" MinHeight="28" FontSize="12"
+                                        Click="AdvancedStartButton_Click" Cursor="Hand"/>
+                            </StackPanel>
+                        </Grid>
+                        <Border x:Name="AdvancedPanel" Visibility="Visible" Margin="0,14,0,0"
+                                Background="{StaticResource ControlFillBrush}" CornerRadius="8" Padding="18,16,18,8">
+                            <WrapPanel x:Name="AdvancedCheckPanel" Orientation="Horizontal"/>
                         </Border>
-                        <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center">
-                            <TextBlock Text="高级清理" FontSize="15" FontWeight="SemiBold"
-                                       Foreground="{StaticResource TextPrimaryBrush}"/>
-                            <TextBlock Text="按需勾选清理项目，深度清理更多系统位置" FontSize="12"
-                                       Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"
-                                       TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <Button Grid.Column="2" Content="进入高级清理" Style="{StaticResource AccentButton}"
-                                Click="AdvancedClean_Click" VerticalAlignment="Center"
-                                Padding="28,10" FontSize="14" Cursor="Hand"/>
-                    </Grid>
+                    </StackPanel>
                 </Border>
 
                 <!-- 一键清理范围 -->

@@ -155,9 +155,8 @@
                     <StackPanel Grid.Row="1" Margin="16,0,16,16">
                         <Border BorderBrush="{StaticResource DividerBrush}" BorderThickness="0,1,0,0"
                                 Padding="0,12,0,0" Margin="0,0,0,8">
-                            <StackPanel Orientation="Horizontal" Cursor="Hand"
-                                        HorizontalAlignment="Center"
-                                        MouseLeftButtonDown="AdminStatus_Click">
+                            <StackPanel Orientation="Horizontal"
+                                        HorizontalAlignment="Center">
                                 <Ellipse Width="8" Height="8" Fill="{StaticResource SuccessBrush}"
                                          VerticalAlignment="Center"/>
                                 <TextBlock Text="管理员权限" FontSize="12"

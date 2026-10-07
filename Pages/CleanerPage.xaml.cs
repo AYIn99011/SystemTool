@@ -23,6 +23,7 @@ namespace SystemTool.Pages
             InitCategories();
             LoadSelection();
             BuildCategoryCheckboxes();
+            BuildAdvancedCheckboxes();
             Loaded += CleanerPage_Loaded;
         }
 
@@ -482,7 +483,84 @@ namespace SystemTool.Pages
 
         #endregion
 
-        private async void AdvancedClean_Click(object sender, RoutedEventArgs e)
+        #region 高级清理：内嵌展开区（与一键清理范围同样式）
+
+        private List<CleanItem> _advancedItems = new();
+        private bool _suppressAdvancedToggle;
+
+        private void BuildAdvancedCheckboxes()
+        {
+            _advancedItems = _cleanService.GetCleanGroups().SelectMany(g => g.Items).ToList();
+            AdvancedCheckPanel.Children.Clear();
+            foreach (var item in _advancedItems)
+            {
+                var tip = item.Description;
+                if (!string.IsNullOrEmpty(item.Warning))
+                    tip += "\n注意：" + item.Warning;
+                var cb = new CheckBox
+                {
+                    Content = item.Name,
+                    ToolTip = tip,
+                    IsChecked = item.IsSelected,
+                    Margin = new Thickness(0, 0, 24, 14),
+                    FontSize = 13,
+                    Tag = item,
+                    Cursor = Cursors.Hand,
+                };
+                cb.Checked += AdvancedCheckBox_Toggled;
+                cb.Unchecked += AdvancedCheckBox_Toggled;
+                AdvancedCheckPanel.Children.Add(cb);
+            }
+            UpdateAdvancedSummaryText();
+        }
+
+        private void AdvancedCheckBox_Toggled(object sender, RoutedEventArgs e)
+        {
+            if (_suppressAdvancedToggle) return;
+            if (sender is not CheckBox cb || cb.Tag is not CleanItem item) return;
+            item.IsSelected = cb.IsChecked == true;
+            UpdateAdvancedSummaryText();
+        }
+
+        private void AdvancedSelectAllButton_Click(object sender, RoutedEventArgs e)
+            => SetAllAdvancedSelected(true);
+
+        private void AdvancedClearButton_Click(object sender, RoutedEventArgs e)
+            => SetAllAdvancedSelected(false);
+
+        private void SetAllAdvancedSelected(bool selected)
+        {
+            _suppressAdvancedToggle = true;
+            try
+            {
+                foreach (var item in _advancedItems)
+                    item.IsSelected = selected;
+                foreach (CheckBox cb in AdvancedCheckPanel.Children)
+                    cb.IsChecked = selected;
+            }
+            finally
+            {
+                _suppressAdvancedToggle = false;
+            }
+            UpdateAdvancedSummaryText();
+        }
+
+        private void UpdateAdvancedSummaryText()
+        {
+            int n = _advancedItems.Count(i => i.IsSelected);
+            bool expanded = AdvancedPanel.Visibility == Visibility.Visible;
+            AdvancedToggle.Content = expanded ? "收起 ▴" : "展开 ▾";
+            AdvancedSummaryText.Text = $"已选择 {n} / {_advancedItems.Count} 项";
+        }
+
+        private void AdvancedToggle_Click(object sender, RoutedEventArgs e)
+        {
+            AdvancedPanel.Visibility = AdvancedPanel.Visibility == Visibility.Visible
+                ? Visibility.Collapsed : Visibility.Visible;
+            UpdateAdvancedSummaryText();
+        }
+
+        private async void AdvancedStartButton_Click(object sender, RoutedEventArgs e)
         {
             if (_isOperating)
             {
@@ -490,18 +568,17 @@ namespace SystemTool.Pages
                 return;
             }
 
-            var groups = _cleanService.GetCleanGroups();
-            var window = new CleanSelectorWindow(groups);
-
-            if (window.ShowDialog() == true)
+            var selectedItems = _advancedItems.Where(i => i.IsSelected).ToList();
+            if (selectedItems.Count == 0)
             {
-                var selectedItems = window.SelectedItems;
-                if (selectedItems.Count > 0)
-                {
-                    await ExecuteAdvancedCleanAsync(selectedItems);
-                }
+                MessageBox.Show("请至少选择一个清理项目", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
             }
+
+            await ExecuteAdvancedCleanAsync(selectedItems);
         }
+
+        #endregion
 
         private async Task ExecuteAdvancedCleanAsync(List<CleanItem> items)
         {
