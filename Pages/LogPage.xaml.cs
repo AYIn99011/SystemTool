@@ -41,6 +41,9 @@ namespace SystemTool.Pages
 
         private void FilterButton_Checked(object sender, RoutedEventArgs e)
         {
+            // XAML 初始化期间 IsChecked="True" 会提前触发，此时字段尚未赋值，直接忽略
+            if (_filterButtons == null || _logViewSource.View == null) return;
+
             var clicked = (ToggleButton)sender;
             foreach (var b in _filterButtons)
                 if (!ReferenceEquals(b, clicked))
@@ -60,6 +63,7 @@ namespace SystemTool.Pages
 
         private void FilterButton_Unchecked(object sender, RoutedEventArgs e)
         {
+            if (_filterButtons == null) return;
             // 单选：不允许全部取消，保持一个选中
             if (_filterButtons.All(b => b.IsChecked != true))
                 ((ToggleButton)sender).IsChecked = true;
