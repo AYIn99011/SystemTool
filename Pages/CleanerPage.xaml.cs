@@ -487,14 +487,39 @@ namespace SystemTool.Pages
             return paths;
         }
 
+        /// <summary>枚举 Firefox 每个 profile 下的 cache2（磁盘缓存）与 startupCache（启动缓存）目录。
+        /// 只清理这两个可重建的子目录，不再触碰整个 Profiles 目录，避免误删书签/历史/密码/扩展。</summary>
+        private List<(string ProfileName, string Kind, string Path)> GetFirefoxCachePaths(string profilesDir)
+        {
+            var result = new List<(string ProfileName, string Kind, string Path)>();
+            try
+            {
+                if (!Directory.Exists(profilesDir)) return result;
+                foreach (var profileDir in Directory.GetDirectories(profilesDir))
+                {
+                    var profileName = Path.GetFileName(profileDir);
+                    foreach (var kind in new[] { "cache2", "startupCache" })
+                    {
+                        var p = Path.Combine(profileDir, kind);
+                        if (Directory.Exists(p)) result.Add((profileName, kind, p));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.Instance.Warning("[CleanerPage.GetFirefoxCachePaths] 枚举 Firefox 配置失败", ex);
+            }
+            return result;
+        }
+
         private List<string> GetBrowserCacheEstimatePaths()
         {
             string up = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             var paths = new List<string>();
             paths.AddRange(GetChromiumProfileCachePaths(Path.Combine(up, @"AppData\Local\Google\Chrome\User Data")));
             paths.AddRange(GetChromiumProfileCachePaths(Path.Combine(up, @"AppData\Local\Microsoft\Edge\User Data")));
-            string ff = Path.Combine(up, @"AppData\Local\Mozilla\Firefox\Profiles");
-            if (Directory.Exists(ff)) paths.Add(ff);
+            paths.AddRange(GetFirefoxCachePaths(
+                Path.Combine(up, @"AppData\Local\Mozilla\Firefox\Profiles")).Select(x => x.Path));
             string c360 = Path.Combine(up, @"AppData\Local\360Chrome\Chrome\User Data\Default\Cache");
             if (Directory.Exists(c360)) paths.Add(c360);
             string qq = Path.Combine(up, @"AppData\Local\Tencent\QQBrowser\User Data\Default\Cache");
@@ -967,7 +992,9 @@ namespace SystemTool.Pages
                         browserPaths[$"Chrome缓存({Path.GetFileName(Path.GetDirectoryName(p))})"] = p;
                     foreach (var p in GetChromiumProfileCachePaths(Path.Combine(userProfile, @"AppData\Local\Microsoft\Edge\User Data")))
                         browserPaths[$"Edge缓存({Path.GetFileName(Path.GetDirectoryName(p))})"] = p;
-                    browserPaths.Add("Firefox缓存", Path.Combine(userProfile, @"AppData\Local\Mozilla\Firefox\Profiles"));
+                    foreach (var (profileName, kind, ffPath) in GetFirefoxCachePaths(
+                        Path.Combine(userProfile, @"AppData\Local\Mozilla\Firefox\Profiles")))
+                        browserPaths[$"Firefox缓存({profileName}/{kind})"] = ffPath;
                     browserPaths.Add("360安全浏览器缓存", Path.Combine(userProfile, @"AppData\Local\360Chrome\Chrome\User Data\Default\Cache"));
                     browserPaths.Add("QQ浏览器缓存", Path.Combine(userProfile, @"AppData\Local\Tencent\QQBrowser\User Data\Default\Cache"));
 
