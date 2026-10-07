@@ -77,8 +77,10 @@ public static class ThemeManager
 
     private static ResourceDictionary LoadThemeDict(string file)
     {
+        // 程序集名可能变更（如改成“系统工具箱”），动态获取，避免写死旧名导致白屏
+        string asm = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name ?? "SystemTool";
         return (ResourceDictionary)Application.LoadComponent(
-            new Uri($"/SystemTool;component/Styles/{file}", UriKind.Relative));
+            new Uri($"/{asm};component/Styles/{file}", UriKind.Relative));
     }
 
     private static ResourceDictionary? FindLiveThemeDict()
