@@ -179,36 +179,6 @@ public partial class OptimizerPage : Page
         }, true);
     }
 
-    private async void EnablePerformanceOptimization_Click(object sender, RoutedEventArgs e)
-    {
-        await ExecuteRegistryOperationAsync("启用系统性能优化", () =>
-        {
-            using var memoryKey = Registry.LocalMachine.CreateSubKey(@"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management");
-            memoryKey?.SetValue("LargeSystemCache", 1, RegistryValueKind.DWord);
-            memoryKey?.SetValue("DisablePagingExecutive", 1, RegistryValueKind.DWord);
-            memoryKey?.SetValue("IoPageLockLimit", 0x10000000, RegistryValueKind.DWord);
-
-            using var prefetchKey = Registry.LocalMachine.CreateSubKey(@"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters");
-            prefetchKey?.SetValue("EnablePrefetcher", 3, RegistryValueKind.DWord);
-            prefetchKey?.SetValue("EnableSuperfetch", 3, RegistryValueKind.DWord);
-        }, false);
-    }
-
-    private async void DisablePerformanceOptimization_Click(object sender, RoutedEventArgs e)
-    {
-        await ExecuteRegistryOperationAsync("恢复系统性能默认设置", () =>
-        {
-            using var memoryKey = Registry.LocalMachine.CreateSubKey(@"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management");
-            memoryKey?.SetValue("LargeSystemCache", 0, RegistryValueKind.DWord);
-            memoryKey?.SetValue("DisablePagingExecutive", 0, RegistryValueKind.DWord);
-            memoryKey?.SetValue("IoPageLockLimit", 0, RegistryValueKind.DWord);
-
-            using var prefetchKey = Registry.LocalMachine.CreateSubKey(@"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters");
-            prefetchKey?.SetValue("EnablePrefetcher", 3, RegistryValueKind.DWord);
-            prefetchKey?.SetValue("EnableSuperfetch", 3, RegistryValueKind.DWord);
-        }, false);
-    }
-
     private async void EnableLargeSystemCache_Click(object sender, RoutedEventArgs e)
     {
         await ExecuteRegistryOperationAsync("启用大系统缓存", () =>
