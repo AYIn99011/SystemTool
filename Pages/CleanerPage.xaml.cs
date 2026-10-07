@@ -1,7 +1,9 @@
 ﻿using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using SystemTool.Models;
 using SystemTool.Services;
@@ -18,8 +20,135 @@ namespace SystemTool.Pages
         public CleanerPage()
         {
             InitializeComponent();
+            InitCategories();
+            LoadSelection();
+            BuildCategoryCheckboxes();
             Loaded += CleanerPage_Loaded;
         }
+
+        #region 一键清理分类定义与选择
+
+        /// <summary>一键清理/预估的一个分类：显示名、只读预估路径、清理实现。</summary>
+        private sealed class CleanCategory
+        {
+            public string Key { get; }
+            public string DisplayName { get; }
+            public Func<List<string>> GetEstimatePaths { get; }
+            public Func<Task<long>> CleanCoreAsync { get; }
+
+            public CleanCategory(string key, string displayName,
+                Func<List<string>> getEstimatePaths, Func<Task<long>> cleanCoreAsync)
+            {
+                Key = key;
+                DisplayName = displayName;
+                GetEstimatePaths = getEstimatePaths;
+                CleanCoreAsync = cleanCoreAsync;
+            }
+        }
+
+        private readonly List<CleanCategory> _categories = new();
+        private readonly HashSet<string> _selectedKeys = new(StringComparer.OrdinalIgnoreCase);
+        private static readonly string SelectionFile = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "SystemTool", "clean_selection.txt");
+
+        private void InitCategories()
+        {
+            // 注意：桌面图标缓存放最后（它会重启资源管理器）
+            _categories.Add(new CleanCategory("SystemCache", "系统缓存", GetSystemCacheEstimatePaths, CleanSystemCacheCoreAsync));
+            _categories.Add(new CleanCategory("SystemLogs", "系统日志", GetSystemLogsEstimatePaths, CleanSystemLogsCoreAsync));
+            _categories.Add(new CleanCategory("BrowserCache", "浏览器缓存", GetBrowserCacheEstimatePaths, CleanBrowserCacheCoreAsync));
+            _categories.Add(new CleanCategory("StoreCache", "应用商店缓存", () => new List<string>(), CleanStoreCacheCoreAsync));
+            _categories.Add(new CleanCategory("QQ", "QQ缓存", GetQQCachePaths, CleanQQCacheCoreAsync));
+            _categories.Add(new CleanCategory("WeChat", "微信缓存", GetWeChatCachePaths, CleanWeChatCacheCoreAsync));
+            _categories.Add(new CleanCategory("QQMusic", "QQ音乐缓存", GetQQMusicCachePaths, CleanQQMusicCacheCoreAsync));
+            _categories.Add(new CleanCategory("CloudMusic", "网易云音乐缓存", GetCloudMusicCachePaths, CleanCloudMusicCacheCoreAsync));
+            _categories.Add(new CleanCategory("KuGou", "酷狗音乐缓存", GetKuGouCachePaths, CleanKuGouCacheCoreAsync));
+            _categories.Add(new CleanCategory("Douyin", "抖音缓存", GetDouyinCachePaths, CleanDouyinCacheCoreAsync));
+            _categories.Add(new CleanCategory("IconCache", "桌面图标缓存", GetIconCacheEstimatePaths, CleanIconCacheCoreAsync));
+        }
+
+        private void LoadSelection()
+        {
+            _selectedKeys.Clear();
+            try
+            {
+                if (File.Exists(SelectionFile))
+                {
+                    foreach (var k in File.ReadAllText(SelectionFile)
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                        _selectedKeys.Add(k);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.Instance.Warning("[CleanerPage.LoadSelection] 读取清理选择失败", ex);
+            }
+            // 去掉未知 key；为空则默认全选
+            _selectedKeys.IntersectWith(_categories.Select(c => c.Key));
+            if (_selectedKeys.Count == 0)
+                foreach (var c in _categories) _selectedKeys.Add(c.Key);
+        }
+
+        private void SaveSelection()
+        {
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(SelectionFile)!);
+                File.WriteAllText(SelectionFile, string.Join(",", _selectedKeys));
+            }
+            catch (Exception ex)
+            {
+                LogService.Instance.Warning("[CleanerPage.SaveSelection] 保存清理选择失败", ex);
+            }
+        }
+
+        private void BuildCategoryCheckboxes()
+        {
+            CategoryCheckPanel.Children.Clear();
+            foreach (var cat in _categories)
+            {
+                var cb = new CheckBox
+                {
+                    Content = cat.DisplayName,
+                    IsChecked = _selectedKeys.Contains(cat.Key),
+                    Margin = new Thickness(0, 0, 14, 8),
+                    FontSize = 12,
+                    Tag = cat.Key,
+                    Cursor = Cursors.Hand,
+                };
+                cb.Checked += CategoryCheckBox_Toggled;
+                cb.Unchecked += CategoryCheckBox_Toggled;
+                CategoryCheckPanel.Children.Add(cb);
+            }
+            UpdateCustomizeToggleText();
+        }
+
+        private void CategoryCheckBox_Toggled(object sender, RoutedEventArgs e)
+        {
+            if (sender is not CheckBox cb || cb.Tag is not string key) return;
+            if (cb.IsChecked == true) _selectedKeys.Add(key);
+            else _selectedKeys.Remove(key);
+            SaveSelection();
+            UpdateCustomizeToggleText();
+            _ = RunEstimateAsync();
+        }
+
+        private void UpdateCustomizeToggleText()
+        {
+            int n = _categories.Count(c => _selectedKeys.Contains(c.Key));
+            string arrow = CustomizePanel.Visibility == Visibility.Visible ? "▴" : "▾";
+            CustomizeToggle.Content = $"自定义清理项（{n}/{_categories.Count}）{arrow}";
+        }
+
+        private void CustomizeToggle_Click(object sender, RoutedEventArgs e)
+        {
+            CustomizePanel.Visibility = CustomizePanel.Visibility == Visibility.Visible
+                ? Visibility.Collapsed : Visibility.Visible;
+            UpdateCustomizeToggleText();
+        }
+
+        #endregion
 
         #region 顶部汇总条：一键扫描 / 预估 / 上次清理
 
@@ -61,42 +190,30 @@ namespace SystemTool.Pages
             RingArc.Data = Geometry.Parse(data);
         }
 
-        /// <summary>只读估算全部可清理大小（字节），顺带推进圆环。</summary>
+        /// <summary>只读估算已选分类可清理大小（字节），顺带推进圆环。</summary>
         private async Task<long> EstimateAllAsync()
         {
-            var groups = new (string Name, Func<List<string>> GetPaths)[]
-            {
-                ("系统缓存", GetSystemCacheEstimatePaths),
-                ("系统日志", GetSystemLogsEstimatePaths),
-                ("浏览器缓存", GetBrowserCacheEstimatePaths),
-                ("桌面图标缓存", GetIconCacheEstimatePaths),
-                ("QQ缓存", GetQQCachePaths),
-                ("微信缓存", GetWeChatCachePaths),
-                ("QQ音乐缓存", GetQQMusicCachePaths),
-                ("网易云音乐缓存", GetCloudMusicCachePaths),
-                ("酷狗音乐缓存", GetKuGouCachePaths),
-                ("抖音缓存", GetDouyinCachePaths),
-            };
+            var selected = _categories.Where(c => _selectedKeys.Contains(c.Key)).ToList();
             long total = 0;
-            for (int i = 0; i < groups.Length; i++)
+            for (int i = 0; i < selected.Count; i++)
             {
-                int idx = i; // 闭包捕获
+                var cat = selected[i];
                 long sub = await Task.Run(() =>
                 {
                     long s = 0;
                     try
                     {
-                        foreach (var p in groups[idx].GetPaths())
+                        foreach (var p in cat.GetEstimatePaths())
                             s += CleanService.GetDirectorySize(p);
                     }
                     catch (Exception ex)
                     {
-                        LogService.Instance.Warning($"[CleanerPage.EstimateAllAsync] 估算{groups[idx].Name}失败", ex);
+                        LogService.Instance.Warning($"[CleanerPage.EstimateAllAsync] 估算{cat.DisplayName}失败", ex);
                     }
                     return s;
                 });
                 total += sub;
-                UpdateRing((double)(i + 1) / groups.Length * 0.95);
+                UpdateRing(selected.Count == 0 ? 0 : (double)(i + 1) / selected.Count * 0.95);
             }
             return total;
         }
@@ -136,21 +253,18 @@ namespace SystemTool.Pages
                     return;
                 }
 
-                // 一键清理：按顺序执行各分类（图标缓存放最后，它会重启资源管理器）
+                // 一键清理：按顺序执行已选分类（图标缓存放最后，它会重启资源管理器）
+                var selected = _categories.Where(c => _selectedKeys.Contains(c.Key)).ToList();
+                if (selected.Count == 0)
+                {
+                    LogService.Instance.Warning("一键清理：未选择任何清理项");
+                    return;
+                }
                 OneClickButton.Content = "清理中…";
                 LogService.Instance.Info("======== 一键清理开始 ========");
                 long freed = 0;
-                freed += await CleanSystemCacheCoreAsync();
-                freed += await CleanSystemLogsCoreAsync();
-                freed += await CleanBrowserCacheCoreAsync();
-                freed += await CleanStoreCacheCoreAsync();
-                freed += await CleanQQCacheCoreAsync();
-                freed += await CleanWeChatCacheCoreAsync();
-                freed += await CleanQQMusicCacheCoreAsync();
-                freed += await CleanCloudMusicCacheCoreAsync();
-                freed += await CleanKuGouCacheCoreAsync();
-                freed += await CleanDouyinCacheCoreAsync();
-                freed += await CleanIconCacheCoreAsync();
+                foreach (var cat in selected)
+                    freed += await cat.CleanCoreAsync();
                 LogService.Instance.Info("======== 一键清理结束 ========");
                 LogService.Instance.Success($"一键清理完成，共释放空间: {FormatSize(freed)}");
                 MarkCleaned();

@@ -40,9 +40,19 @@
                             <TextBlock x:Name="LastCleanText" Text="上次清理：--" FontSize="13"
                                        Foreground="{StaticResource TextSecondaryBrush}"/>
                         </StackPanel>
-                        <Button x:Name="OneClickButton" Grid.Column="2" Content="一键扫描"
-                                Style="{StaticResource AccentButton}" Click="OneClickButton_Click"
-                                VerticalAlignment="Center" Padding="46,14" FontSize="16" Cursor="Hand"/>
+                        <StackPanel Grid.Column="2" VerticalAlignment="Center" MinWidth="230">
+                            <Button x:Name="OneClickButton" Content="一键扫描"
+                                    Style="{StaticResource AccentButton}" Click="OneClickButton_Click"
+                                    Padding="46,14" FontSize="16" Cursor="Hand"/>
+                            <ToggleButton x:Name="CustomizeToggle" Content="自定义清理项 ▾"
+                                          Margin="0,10,0,0" FontSize="12" Cursor="Hand"
+                                          Style="{StaticResource FluentButton}" Padding="0,7"
+                                          Click="CustomizeToggle_Click"/>
+                            <Border x:Name="CustomizePanel" Visibility="Collapsed" Margin="0,8,0,0"
+                                    Background="{StaticResource CardFillBrush}" CornerRadius="8" Padding="12,10,12,4">
+                                <WrapPanel x:Name="CategoryCheckPanel" Orientation="Horizontal"/>
+                            </Border>
+                        </StackPanel>
                     </Grid>
                 </Border>
 
@@ -181,13 +191,7 @@
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    <Border Width="42" Height="42" CornerRadius="10" Background="#a78bfa" HorizontalAlignment="Left">
-                        <Viewbox Width="24" Height="24">
-                            <Canvas Width="24" Height="24">
-                                <Path Fill="#FFFFFF" Data="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M12,6A6,6 0 0,1 18,12A6,6 0 0,1 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6M12,8A4,4 0 0,0 8,12A4,4 0 0,0 12,16A4,4 0 0,0 16,12A4,4 0 0,0 12,8Z"/>
-                            </Canvas>
-                        </Viewbox>
-                    </Border>
+                    <Image Source="/tubiao/browser.png" Width="42" Height="42" HorizontalAlignment="Left" RenderOptions.BitmapScalingMode="HighQuality"/>
                     <TextBlock Grid.Row="1" Text="浏览器缓存" FontSize="15" FontWeight="SemiBold"
                                Foreground="{StaticResource TextPrimaryBrush}" Margin="0,10,0,0"/>
                     <TextBlock Grid.Row="2" Text="清理Chrome、Edge等浏览器缓存数据" FontSize="12" Margin="0,4,0,0"
@@ -231,13 +235,7 @@
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    <Border Width="42" Height="42" CornerRadius="10" Background="#12b7f5" HorizontalAlignment="Left">
-                        <Viewbox Width="24" Height="24">
-                            <Canvas Width="24" Height="24">
-                                <Path Fill="#FFFFFF" Data="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M7,10L12,15L17,10H7Z"/>
-                            </Canvas>
-                        </Viewbox>
-                    </Border>
+                    <Image Source="/tubiao/qq.png" Width="42" Height="42" HorizontalAlignment="Left" RenderOptions.BitmapScalingMode="HighQuality"/>
                     <TextBlock Grid.Row="1" Text="QQ缓存" FontSize="15" FontWeight="SemiBold"
                                Foreground="{StaticResource TextPrimaryBrush}" Margin="0,10,0,0"/>
                     <TextBlock Grid.Row="2" Text="清理QQ缓存和临时文件（不删除图片、视频、语音、文件）" FontSize="12" Margin="0,4,0,0"
@@ -281,13 +279,7 @@
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    <Border Width="42" Height="42" CornerRadius="10" Background="#22c55e" HorizontalAlignment="Left">
-                        <Viewbox Width="24" Height="24">
-                            <Canvas Width="24" Height="24">
-                                <Path Fill="#FFFFFF" Data="M12,3v10.55c-.59-.34-1.27-.55-2-.55-2.21,0-4,1.79-4,4s1.79,4 4,4 4-1.79 4-4V7h4V3h-6z"/>
-                            </Canvas>
-                        </Viewbox>
-                    </Border>
+                    <Image Source="/tubiao/qqmusic.png" Width="42" Height="42" HorizontalAlignment="Left" RenderOptions.BitmapScalingMode="HighQuality"/>
                     <TextBlock Grid.Row="1" Text="QQ音乐缓存" FontSize="15" FontWeight="SemiBold"
                                Foreground="{StaticResource TextPrimaryBrush}" Margin="0,10,0,0"/>
                     <TextBlock Grid.Row="2" Text="清理QQ音乐播放缓存" FontSize="12" Margin="0,4,0,0"
@@ -306,13 +298,7 @@
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    <Border Width="42" Height="42" CornerRadius="10" Background="#ef4444" HorizontalAlignment="Left">
-                        <Viewbox Width="24" Height="24">
-                            <Canvas Width="24" Height="24">
-                                <Path Fill="#FFFFFF" Data="M12,3v10.55c-.59-.34-1.27-.55-2-.55-2.21,0-4,1.79-4,4s1.79,4 4,4 4-1.79 4-4V7h4V3h-6z"/>
-                            </Canvas>
-                        </Viewbox>
-                    </Border>
+                    <Image Source="/tubiao/cloudmusic.png" Width="42" Height="42" HorizontalAlignment="Left" RenderOptions.BitmapScalingMode="HighQuality"/>
                     <TextBlock Grid.Row="1" Text="网易云音乐缓存" FontSize="15" FontWeight="SemiBold"
                                Foreground="{StaticResource TextPrimaryBrush}" Margin="0,10,0,0"/>
                     <TextBlock Grid.Row="2" Text="清理网易云音乐播放缓存" FontSize="12" Margin="0,4,0,0"
@@ -331,13 +317,7 @@
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    <Border Width="42" Height="42" CornerRadius="10" Background="#3b82f6" HorizontalAlignment="Left">
-                        <Viewbox Width="24" Height="24">
-                            <Canvas Width="24" Height="24">
-                                <Path Fill="#FFFFFF" Data="M12,3v10.55c-.59-.34-1.27-.55-2-.55-2.21,0-4,1.79-4,4s1.79,4 4,4 4-1.79 4-4V7h4V3h-6z"/>
-                            </Canvas>
-                        </Viewbox>
-                    </Border>
+                    <Image Source="/tubiao/kugou.png" Width="42" Height="42" HorizontalAlignment="Left" RenderOptions.BitmapScalingMode="HighQuality"/>
                     <TextBlock Grid.Row="1" Text="酷狗音乐缓存" FontSize="15" FontWeight="SemiBold"
                                Foreground="{StaticResource TextPrimaryBrush}" Margin="0,10,0,0"/>
                     <TextBlock Grid.Row="2" Text="清理酷狗音乐播放缓存" FontSize="12" Margin="0,4,0,0"
@@ -356,13 +336,7 @@
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    <Border Width="42" Height="42" CornerRadius="10" Background="#f97316" HorizontalAlignment="Left">
-                        <Viewbox Width="24" Height="24">
-                            <Canvas Width="24" Height="24">
-                                <Path Fill="#FFFFFF" Data="M12,3v10.55c-.59-.34-1.27-.55-2-.55-2.21,0-4,1.79-4,4s1.79,4 4,4 4-1.79 4-4V7h4V3h-6z"/>
-                            </Canvas>
-                        </Viewbox>
-                    </Border>
+                    <Image Source="/tubiao/douyin.png" Width="42" Height="42" HorizontalAlignment="Left" RenderOptions.BitmapScalingMode="HighQuality"/>
                     <TextBlock Grid.Row="1" Text="抖音缓存" FontSize="15" FontWeight="SemiBold"
                                Foreground="{StaticResource TextPrimaryBrush}" Margin="0,10,0,0"/>
                     <TextBlock Grid.Row="2" Text="清理抖音视频缓存" FontSize="12" Margin="0,4,0,0"

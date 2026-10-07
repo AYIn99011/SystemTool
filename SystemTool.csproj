@@ -47,5 +47,9 @@
     <Resource Include="ico\*.png" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Resource Include="tubiao\*.png" />
+  </ItemGroup>
+
 
 </Project>
