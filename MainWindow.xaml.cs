@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
 using SystemTool.Pages;
 using SystemTool.Services;
 
@@ -333,5 +334,53 @@ public partial class MainWindow : Window
         {
             MessageBox.Show("无法打开链接", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    // 字体缩放档位：90% ~ 130%
+    private static readonly double[] FontScales = { 0.9, 1.0, 1.1, 1.2, 1.3 };
+    private int _fontScaleIndex = 1;
+
+    private void FontDecrease_Click(object sender, RoutedEventArgs e)
+    {
+        if (_fontScaleIndex > 0)
+        {
+            _fontScaleIndex--;
+            ApplyFontScale();
+        }
+    }
+
+    private void FontIncrease_Click(object sender, RoutedEventArgs e)
+    {
+        if (_fontScaleIndex < FontScales.Length - 1)
+        {
+            _fontScaleIndex++;
+            ApplyFontScale();
+        }
+    }
+
+    /// <summary>
+    /// 应用字体缩放：界面整体缩放 + 窗口按相同比例缩放。
+    /// </summary>
+    private void ApplyFontScale()
+    {
+        double newScale = FontScales[_fontScaleIndex];
+        double oldScale = (RootGrid.LayoutTransform as ScaleTransform)?.ScaleX ?? 1.0;
+        if (System.Math.Abs(newScale - oldScale) < 0.001) return;
+
+        RootGrid.LayoutTransform = new ScaleTransform(newScale, newScale);
+
+        // 窗口等比缩放（最大化时不调整，避免与系统窗口管理冲突）
+        if (WindowState == WindowState.Normal && oldScale > 0)
+        {
+            double ratio = newScale / oldScale;
+            Width *= ratio;
+            Height *= ratio;
+            MinWidth *= ratio;
+            MinHeight *= ratio;
+        }
+
+        FontScaleText.Text = $"{(int)(newScale * 100)}%";
+        FontDecreaseButton.IsEnabled = _fontScaleIndex > 0;
+        FontIncreaseButton.IsEnabled = _fontScaleIndex < FontScales.Length - 1;
     }
 }
