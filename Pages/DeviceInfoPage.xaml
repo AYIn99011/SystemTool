@@ -27,7 +27,7 @@
                         BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
                         CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
                     <StackPanel>
-                        <Grid Margin="0,4">
+                        <Grid Margin="0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="110"/>
                                 <ColumnDefinition Width="*"/>
@@ -36,7 +36,7 @@
                             <TextBlock x:Name="CpuNameText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
                         </Grid>
                         <Border Height="1" Background="{StaticResource DividerBrush}"/>
-                        <Grid Margin="0,4">
+                        <Grid Margin="0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="110"/>
                                 <ColumnDefinition Width="*"/>
@@ -61,7 +61,7 @@
                                          Minimum="0" Maximum="100" Value="0" Margin="0,8,0,2"/>
                         </Grid>
                         <Border Height="1" Background="{StaticResource DividerBrush}"/>
-                        <Grid Margin="0,4">
+                        <Grid Margin="0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="110"/>
                                 <ColumnDefinition Width="*"/>
@@ -70,7 +70,7 @@
                             <TextBlock x:Name="CpuTempText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
                         </Grid>
                         <Border Height="1" Background="{StaticResource DividerBrush}"/>
-                        <Grid Margin="0,4">
+                        <Grid Margin="0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="110"/>
                                 <ColumnDefinition Width="*"/>
@@ -87,7 +87,7 @@
                         BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
                         CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
                     <StackPanel>
-                        <Grid Margin="0,4">
+                        <Grid Margin="0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="110"/>
                                 <ColumnDefinition Width="*"/>
@@ -96,7 +96,7 @@
                             <TextBlock x:Name="MemoryTotalText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
                         </Grid>
                         <Border Height="1" Background="{StaticResource DividerBrush}"/>
-                        <Grid Margin="0,4">
+                        <Grid Margin="0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="110"/>
                                 <ColumnDefinition Width="*"/>
@@ -105,7 +105,7 @@
                             <TextBlock x:Name="MemoryUsedText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
                         </Grid>
                         <Border Height="1" Background="{StaticResource DividerBrush}"/>
-                        <Grid Margin="0,4">
+                        <Grid Margin="0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="110"/>
                                 <ColumnDefinition Width="*"/>
@@ -114,7 +114,7 @@
                             <TextBlock x:Name="MemoryTypeText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
                         </Grid>
                         <Border Height="1" Background="{StaticResource DividerBrush}"/>
-                        <Grid Margin="0,4">
+                        <Grid Margin="0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="110"/>
                                 <ColumnDefinition Width="*"/>
@@ -147,7 +147,7 @@
                         BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
                         CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
                     <StackPanel>
-                        <Grid Margin="0,4">
+                        <Grid Margin="0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="110"/>
                                 <ColumnDefinition Width="*"/>
@@ -156,7 +156,7 @@
                             <TextBlock x:Name="GpuNameText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
                         </Grid>
                         <Border Height="1" Background="{StaticResource DividerBrush}"/>
-                        <Grid Margin="0,4">
+                        <Grid Margin="0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="110"/>
                                 <ColumnDefinition Width="*"/>
@@ -165,7 +165,7 @@
                             <TextBlock x:Name="GpuMemoryText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
                         </Grid>
                         <Border Height="1" Background="{StaticResource DividerBrush}"/>
-                        <Grid Margin="0,4">
+                        <Grid Margin="0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="110"/>
                                 <ColumnDefinition Width="*"/>
@@ -174,7 +174,7 @@
                             <TextBlock x:Name="GpuDriverText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
                         </Grid>
                         <Border Height="1" Background="{StaticResource DividerBrush}"/>
-                        <Grid Margin="0,4">
+                        <Grid Margin="0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="110"/>
                                 <ColumnDefinition Width="*"/>
@@ -211,7 +211,7 @@
                         BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
                         CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
                     <StackPanel>
-                        <Grid Margin="0,4">
+                        <Grid Margin="0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="110"/>
                                 <ColumnDefinition Width="*"/>
@@ -220,7 +220,7 @@
                             <TextBlock x:Name="MotherboardText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
                         </Grid>
                         <Border Height="1" Background="{StaticResource DividerBrush}"/>
-                        <Grid Margin="0,4">
+                        <Grid Margin="0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="110"/>
                                 <ColumnDefinition Width="*"/>
@@ -237,7 +237,7 @@
                         BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
                         CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
                     <StackPanel>
-                        <Grid Margin="0,4">
+                        <Grid Margin="0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="110"/>
                                 <ColumnDefinition Width="*"/>
@@ -246,7 +246,7 @@
                             <TextBlock x:Name="OsVersionText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
                         </Grid>
                         <Border Height="1" Background="{StaticResource DividerBrush}"/>
-                        <Grid Margin="0,4">
+                        <Grid Margin="0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="110"/>
                                 <ColumnDefinition Width="*"/>
@@ -255,7 +255,7 @@
                             <TextBlock x:Name="OsBuildText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
                         </Grid>
                         <Border Height="1" Background="{StaticResource DividerBrush}"/>
-                        <Grid Margin="0,4">
+                        <Grid Margin="0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="110"/>
                                 <ColumnDefinition Width="*"/>
@@ -264,7 +264,7 @@
                             <TextBlock x:Name="OsArchitectureText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
                         </Grid>
                         <Border Height="1" Background="{StaticResource DividerBrush}"/>
-                        <Grid Margin="0,4">
+                        <Grid Margin="0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="110"/>
                                 <ColumnDefinition Width="*"/>
@@ -281,7 +281,7 @@
                         BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
                         CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
                     <StackPanel>
-                        <Grid Margin="0,4">
+                        <Grid Margin="0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="110"/>
                                 <ColumnDefinition Width="*"/>
@@ -290,7 +290,7 @@
                             <TextBlock x:Name="MonitorNameText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
                         </Grid>
                         <Border Height="1" Background="{StaticResource DividerBrush}"/>
-                        <Grid Margin="0,4">
+                        <Grid Margin="0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="110"/>
                                 <ColumnDefinition Width="*"/>
@@ -299,7 +299,7 @@
                             <TextBlock x:Name="MonitorResolutionText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
                         </Grid>
                         <Border Height="1" Background="{StaticResource DividerBrush}"/>
-                        <Grid Margin="0,4">
+                        <Grid Margin="0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="110"/>
                                 <ColumnDefinition Width="*"/>
@@ -316,7 +316,7 @@
                         BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
                         CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
                     <StackPanel>
-                        <Grid Margin="0,4">
+                        <Grid Margin="0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="110"/>
                                 <ColumnDefinition Width="*"/>
@@ -325,7 +325,7 @@
                             <TextBlock x:Name="DiskTotalText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
                         </Grid>
                         <Border Height="1" Background="{StaticResource DividerBrush}"/>
-                        <Grid Margin="0,4">
+                        <Grid Margin="0,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="110"/>
                                 <ColumnDefinition Width="*"/>

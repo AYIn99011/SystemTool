@@ -61,7 +61,6 @@ namespace SystemTool.Pages
 
         private void InitCategories()
         {
-            // 注意：桌面图标缓存放最后（它会重启资源管理器）
             _categories.Add(new CleanCategory("SystemCache", "系统缓存", GetSystemCacheEstimatePaths, CleanSystemCacheCoreAsync));
             _categories.Add(new CleanCategory("SystemLogs", "系统日志", GetSystemLogsEstimatePaths, CleanSystemLogsCoreAsync));
             _categories.Add(new CleanCategory("BrowserCache", "浏览器缓存", GetBrowserCacheEstimatePaths, CleanBrowserCacheCoreAsync));
@@ -72,7 +71,6 @@ namespace SystemTool.Pages
             _categories.Add(new CleanCategory("CloudMusic", "网易云音乐缓存", GetCloudMusicCachePaths, CleanCloudMusicCacheCoreAsync));
             _categories.Add(new CleanCategory("KuGou", "酷狗音乐缓存", GetKuGouCachePaths, CleanKuGouCacheCoreAsync));
             _categories.Add(new CleanCategory("Douyin", "抖音缓存", GetDouyinCachePaths, CleanDouyinCacheCoreAsync));
-            _categories.Add(new CleanCategory("IconCache", "桌面图标缓存", GetIconCacheEstimatePaths, CleanIconCacheCoreAsync));
         }
 
         private void LoadSelection()
@@ -141,7 +139,8 @@ namespace SystemTool.Pages
             else _selectedKeys.Remove(key);
             SaveSelection();
             UpdateCustomizeToggleText();
-            _ = RunEstimateAsync();
+            // 增量更新：取消勾选直接用缓存重算，只有新勾选的缺失分类才补扫
+            _ = RefreshEstimateOnSelectionChangedAsync();
         }
 
         private void SelectAllButton_Click(object sender, RoutedEventArgs e)
@@ -167,7 +166,7 @@ namespace SystemTool.Pages
             }
             SaveSelection();
             UpdateCustomizeToggleText();
-            _ = RunEstimateAsync();
+            _ = RefreshEstimateOnSelectionChangedAsync();
         }
 
         private void UpdateCustomizeToggleText()
@@ -227,6 +226,22 @@ namespace SystemTool.Pages
             RingArc.Data = Geometry.Parse(data);
         }
 
+        /// <summary>只读估算单个分类可清理大小。</summary>
+        private long EstimateCategorySize(CleanCategory cat)
+        {
+            long s = 0;
+            try
+            {
+                foreach (var p in cat.GetEstimatePaths())
+                    s += CleanService.GetDirectorySize(p);
+            }
+            catch (Exception ex)
+            {
+                LogService.Instance.Warning($"[CleanerPage.EstimateCategorySize] 估算{cat.DisplayName}失败", ex);
+            }
+            return s;
+        }
+
         /// <summary>只读估算已选分类可清理大小，返回各分类字节数，顺带推进圆环。</summary>
         private async Task<Dictionary<string, long>> EstimateAllAsync()
         {
@@ -235,20 +250,7 @@ namespace SystemTool.Pages
             for (int i = 0; i < selected.Count; i++)
             {
                 var cat = selected[i];
-                long sub = await Task.Run(() =>
-                {
-                    long s = 0;
-                    try
-                    {
-                        foreach (var p in cat.GetEstimatePaths())
-                            s += CleanService.GetDirectorySize(p);
-                    }
-                    catch (Exception ex)
-                    {
-                        LogService.Instance.Warning($"[CleanerPage.EstimateAllAsync] 估算{cat.DisplayName}失败", ex);
-                    }
-                    return s;
-                });
+                long sub = await Task.Run(() => EstimateCategorySize(cat));
                 sizes[cat.Key] = sub;
                 UpdateRing(selected.Count == 0 ? 0 : (double)(i + 1) / selected.Count * 0.95);
             }
@@ -276,21 +278,63 @@ namespace SystemTool.Pages
             {
                 EstimateText.Text = "正在扫描…";
                 UpdateRing(0.05);
-                _lastEstimates = await EstimateAllAsync();
-                long est = _lastEstimates.Values.Sum();
-                _lastEstimate = est;
-                _estimateReady = true;
-                EstimateText.Text = _cleanService.FormatSize(est);
-                // 圆环以 20GB 为满刻度，仅作视觉示意
-                UpdateRing(Math.Min(est / (20.0 * 1024 * 1024 * 1024), 1.0));
-                OneClickButton.Content = $"一键清理（{FormatSize(est)}）";
-                RefreshCategorySizes();
+                var fresh = await EstimateAllAsync();
+                // 合并进缓存（保留未选中分类的旧扫描值，勾选变化时可直接复用）
+                foreach (var kv in fresh)
+                    _lastEstimates[kv.Key] = kv.Value;
+                UpdateEstimateDisplay();
             }
             catch (Exception ex)
             {
                 LogService.Instance.Warning("[CleanerPage.RunEstimateAsync] 扫描失败", ex);
                 EstimateText.Text = "--";
             }
+        }
+
+        /// <summary>
+        /// 勾选变化时的增量更新：已扫描过的分类直接用缓存重算，
+        /// 只有新勾选且缓存缺失的分类才单独扫描，不再全量重扫。
+        /// </summary>
+        private async Task RefreshEstimateOnSelectionChangedAsync()
+        {
+            try
+            {
+                var missing = _categories
+                    .Where(c => _selectedKeys.Contains(c.Key) && !_lastEstimates.ContainsKey(c.Key))
+                    .ToList();
+                if (missing.Count > 0)
+                {
+                    EstimateText.Text = "正在扫描…";
+                    foreach (var cat in missing)
+                    {
+                        long sub = await Task.Run(() => EstimateCategorySize(cat));
+                        _lastEstimates[cat.Key] = sub;
+                    }
+                }
+                UpdateEstimateDisplay();
+            }
+            catch (Exception ex)
+            {
+                LogService.Instance.Warning("[CleanerPage.RefreshEstimateOnSelectionChangedAsync] 更新预估失败", ex);
+            }
+        }
+
+        /// <summary>用缓存重算已选分类总额并刷新界面（不扫描）。</summary>
+        private void UpdateEstimateDisplay()
+        {
+            long est = 0;
+            foreach (var c in _categories)
+            {
+                if (_selectedKeys.Contains(c.Key) && _lastEstimates.TryGetValue(c.Key, out long size))
+                    est += size;
+            }
+            _lastEstimate = est;
+            _estimateReady = _lastEstimates.Count > 0;
+            EstimateText.Text = _cleanService.FormatSize(est);
+            // 圆环以 20GB 为满刻度，仅作视觉示意
+            UpdateRing(Math.Min(est / (20.0 * 1024 * 1024 * 1024), 1.0));
+            OneClickButton.Content = _estimateReady ? $"一键清理（{FormatSize(est)}）" : "一键扫描";
+            RefreshCategorySizes();
         }
 
         private async void OneClickButton_Click(object sender, RoutedEventArgs e)
@@ -307,7 +351,7 @@ namespace SystemTool.Pages
                     return;
                 }
 
-                // 一键清理：按顺序执行已选分类（图标缓存放最后，它会重启资源管理器）
+                // 一键清理：按顺序执行已选分类
                 var selected = _categories.Where(c => _selectedKeys.Contains(c.Key)).ToList();
                 if (selected.Count == 0)
                 {
@@ -455,27 +499,6 @@ namespace SystemTool.Pages
             if (Directory.Exists(c360)) paths.Add(c360);
             string qq = Path.Combine(up, @"AppData\Local\Tencent\QQBrowser\User Data\Default\Cache");
             if (Directory.Exists(qq)) paths.Add(qq);
-            return paths;
-        }
-
-        private List<string> GetIconCacheEstimatePaths()
-        {
-            // 只算实际会删的文件：IconCache.db + iconcache_*.db
-            // （之前算整个 Explorer 文件夹会多算很多不删的文件；thumbcache 归系统缓存算，避免重复）
-            var paths = new List<string>();
-            string lad = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            string dbFile = Path.Combine(lad, "IconCache.db");
-            if (File.Exists(dbFile)) paths.Add(dbFile);
-            try
-            {
-                var explorerDir = Path.Combine(lad, "Microsoft", "Windows", "Explorer");
-                if (Directory.Exists(explorerDir))
-                    paths.AddRange(Directory.GetFiles(explorerDir, "iconcache_*.db"));
-            }
-            catch (Exception ex)
-            {
-                LogService.Instance.Warning("[CleanerPage.GetIconCacheEstimatePaths] 枚举图标缓存失败", ex);
-            }
             return paths;
         }
 
@@ -980,138 +1003,7 @@ namespace SystemTool.Pages
             }
         }
 
-        private async void CleanIconCache_Click(object sender, RoutedEventArgs e)
-        {
-            if (_isOperating) return;
-            _isOperating = true;
-            try
-            {
-                await CleanIconCacheCoreAsync();
-                MarkCleaned();
-            }
-            finally
-            {
-                _isOperating = false;
-            }
-        }
 
-        private async Task<long> CleanIconCacheCoreAsync()
-        {
-            LogService.Instance.Info("开始清理桌面图标缓存...");
-            LogService.Instance.Info("----------------------------------------");
-
-            try
-            {
-                var result = await Task.Run(() =>
-                {
-                    long totalSize = 0;
-                    int fileCount = 0;
-
-                    string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                    string iconCacheFile = Path.Combine(localAppData, "IconCache.db");
-                    string iconCacheDir = Path.Combine(localAppData, "Microsoft", "Windows", "Explorer");
-
-                    LogService.Instance.Info($"清理图标缓存文件: {iconCacheFile}");
-                    if (File.Exists(iconCacheFile))
-                    {
-                        try
-                        {
-                            var fileInfo = new FileInfo(iconCacheFile);
-                            totalSize += fileInfo.Length;
-                            File.Delete(iconCacheFile);
-                            fileCount++;
-                            LogService.Instance.Info($"  IconCache.db: 删除成功, 大小 {FormatSize(fileInfo.Length)}");
-                        }
-                        catch (Exception ex)
-                        {
-                            LogService.Instance.Warning($"  IconCache.db: 删除失败 - {ex.Message}");
-                        }
-                    }
-                    else
-                    {
-                        LogService.Instance.Info($"  IconCache.db: 文件不存在");
-                    }
-
-                    LogService.Instance.Info($"清理图标缓存目录: {iconCacheDir}");
-                    if (Directory.Exists(iconCacheDir))
-                    {
-                        int iconFileCount = 0;
-                        long iconFileSize = 0;
-                        foreach (var file in Directory.GetFiles(iconCacheDir, "iconcache_*.db"))
-                        {
-                            try
-                            {
-                                var fileInfo = new FileInfo(file);
-                                iconFileSize += fileInfo.Length;
-                                File.Delete(file);
-                                iconFileCount++;
-                            }
-                            catch (Exception ex)
-                            {
-                                LogService.Instance.Warning("[CleanerPage.CleanIconCache_Click] 删除失败", ex);
-                            }
-                        }
-                        totalSize += iconFileSize;
-                        fileCount += iconFileCount;
-                        LogService.Instance.Info($"  iconcache_*.db: 删除 {iconFileCount} 个文件, 释放 {FormatSize(iconFileSize)}");
-
-                        int thumbFileCount = 0;
-                        long thumbFileSize = 0;
-                        foreach (var file in Directory.GetFiles(iconCacheDir, "thumbcache_*.db"))
-                        {
-                            try
-                            {
-                                var fileInfo = new FileInfo(file);
-                                thumbFileSize += fileInfo.Length;
-                                File.Delete(file);
-                                thumbFileCount++;
-                            }
-                            catch (Exception ex)
-                            {
-                                LogService.Instance.Warning("[CleanerPage.CleanIconCache_Click] 删除失败", ex);
-                            }
-                        }
-                        totalSize += thumbFileSize;
-                        fileCount += thumbFileCount;
-                        LogService.Instance.Info($"  thumbcache_*.db: 删除 {thumbFileCount} 个文件, 释放 {FormatSize(thumbFileSize)}");
-                    }
-
-                    LogService.Instance.Info("正在重启资源管理器...");
-                    foreach (var proc in Process.GetProcessesByName("explorer"))
-                    {
-                        try
-                        {
-                            proc.Kill();
-                        }
-                        catch (Exception ex)
-                        {
-                            LogService.Instance.Warning("[CleanerPage.未知方法] 执行失败", ex);
-                        }
-                    }
-
-                    Thread.Sleep(500);
-
-                    Process.Start(new ProcessStartInfo
-                    {
-                        FileName = "explorer.exe",
-                        UseShellExecute = true
-                    });
-
-                    return (totalSize, fileCount);
-                });
-
-                LogService.Instance.Info("----------------------------------------");
-                LogService.Instance.Info($"图标缓存清理汇总:");
-                LogService.Instance.Info($"  删除文件: {result.fileCount} 个");
-                LogService.Instance.Success($"桌面图标缓存清理完成，释放空间: {FormatSize(result.totalSize)}，资源管理器已重启");
-                return result.totalSize;
-            }
-            catch (Exception ex)
-            {
-                LogService.Instance.Error($"桌面图标缓存清理失败: {ex.Message}");
-                return 0;
-            }
-        }
 
         private async void CleanQQMusicCache_Click(object sender, RoutedEventArgs e)
         {

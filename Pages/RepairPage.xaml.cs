@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -112,6 +113,96 @@ public partial class RepairPage : Page
         {
             Services.LogService.Instance.Warning("[RepairPage.NetworkRepair_Click] 启动网络修复失败", ex);
             MessageBox.Show("无法启动网络修复，请确保以管理员权限运行。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+        private async void RepairIconCache_Click(object sender, RoutedEventArgs e)
+    {
+        var confirm = MessageBox.Show(
+            "将删除图标缓存并重启资源管理器（桌面会闪一下），确定继续吗？",
+            "桌面图标异常修复", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.Yes) return;
+
+        var cleanService = new Services.CleanService();
+        try
+        {
+            var result = await Task.Run(() =>
+            {
+                long totalSize = 0;
+                int fileCount = 0;
+
+                string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                string iconCacheFile = Path.Combine(localAppData, "IconCache.db");
+                string iconCacheDir = Path.Combine(localAppData, "Microsoft", "Windows", "Explorer");
+
+                Services.LogService.Instance.Info($"[桌面图标异常修复] 清理: {iconCacheFile}");
+                if (File.Exists(iconCacheFile))
+                {
+                    try
+                    {
+                        var fileInfo = new FileInfo(iconCacheFile);
+                        totalSize += fileInfo.Length;
+                        File.Delete(iconCacheFile);
+                        fileCount++;
+                    }
+                    catch (Exception ex)
+                    {
+                        Services.LogService.Instance.Warning($"[桌面图标异常修复] IconCache.db 删除失败 - {ex.Message}");
+                    }
+                }
+
+                if (Directory.Exists(iconCacheDir))
+                {
+                    foreach (var pattern in new[] { "iconcache_*.db", "thumbcache_*.db" })
+                    {
+                        foreach (var file in Directory.GetFiles(iconCacheDir, pattern))
+                        {
+                            try
+                            {
+                                var fileInfo = new FileInfo(file);
+                                totalSize += fileInfo.Length;
+                                File.Delete(file);
+                                fileCount++;
+                            }
+                            catch (Exception ex)
+                            {
+                                Services.LogService.Instance.Warning($"[桌面图标异常修复] 删除失败 {file} - {ex.Message}");
+                            }
+                        }
+                    }
+                }
+
+                Services.LogService.Instance.Info("[桌面图标异常修复] 正在重启资源管理器...");
+                foreach (var proc in Process.GetProcessesByName("explorer"))
+                {
+                    try { proc.Kill(); }
+                    catch (Exception ex)
+                    {
+                        Services.LogService.Instance.Warning($"[桌面图标异常修复] 结束 explorer 失败 - {ex.Message}");
+                    }
+                }
+
+                Thread.Sleep(500);
+
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    UseShellExecute = true
+                });
+
+                return (totalSize, fileCount);
+            });
+
+            Services.LogService.Instance.Success(
+                $"桌面图标异常修复完成：删除 {result.fileCount} 个缓存文件，释放 {cleanService.FormatSize(result.totalSize)}，资源管理器已重启");
+            MessageBox.Show(
+                $"修复完成：删除 {result.fileCount} 个缓存文件，释放 {cleanService.FormatSize(result.totalSize)}。",
+                "桌面图标异常修复", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            Services.LogService.Instance.Error($"[桌面图标异常修复] 执行失败: {ex.Message}");
+            MessageBox.Show("修复失败，请确保以管理员权限运行。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 }
