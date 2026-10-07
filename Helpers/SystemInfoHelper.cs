@@ -103,19 +103,35 @@ public static class SystemInfoHelper
     public static void CacheStaticInfo()
     {
         if (_staticInfoCached) return;
-        
-        _cachedCpuName = GetCpuNameInternal();
-        _cachedCpuCores = GetCpuCoresInternal();
-        _cachedGpuName = GetGpuNameInternal();
-        _cachedGpuMemory = GetGpuMemoryInternal();
-        _cachedGpuDriver = GetGpuDriverInternal();
-        _cachedMotherboard = GetMotherboardInternal();
-        _cachedBios = GetBiosInternal();
-        _cachedMemorySpeed = GetMemorySpeedInternal();
-        _cachedMemoryType = GetMemoryTypeInternal();
-        _cachedMonitorName = GetMonitorNameInternal();
-        _cachedMonitorResolution = GetMonitorResolutionInternal();
-        _cachedMonitorRefreshRate = GetMonitorRefreshRateInternal();
+
+        // 各组相互独立，并行加载；组内把同类 WMI 查询合并为一次
+        System.Threading.Tasks.Parallel.Invoke(
+            () =>
+            {
+                var (name, cores) = GetCpuInfoInternal();
+                _cachedCpuName = name;
+                _cachedCpuCores = cores;
+            },
+            () =>
+            {
+                var (type, speed) = GetMemoryModulesInternal();
+                _cachedMemoryType = type;
+                _cachedMemorySpeed = speed;
+            },
+            () =>
+            {
+                var (names, drivers, resolution, refresh) = GetVideoControllerInternal();
+                _cachedGpuName = names;
+                _cachedGpuDriver = drivers;
+                _cachedMonitorResolution = resolution;
+                _cachedMonitorRefreshRate = refresh;
+            },
+            () => _cachedGpuMemory = GetGpuMemoryInternal(),
+            () => _cachedMotherboard = GetMotherboardInternal(),
+            () => _cachedBios = GetBiosInternal(),
+            () => _cachedMonitorName = GetMonitorNameInternal(),
+            () => GetDiskDrives() // 内部缓存型号/容量，并顺带算好总容量
+        );
         _staticInfoCached = true;
     }
 
@@ -199,48 +215,34 @@ public static class SystemInfoHelper
 
     public static string GetCpuName()
     {
-        return _staticInfoCached ? _cachedCpuName : GetCpuNameInternal();
-    }
-
-    private static string GetCpuNameInternal()
-    {
-        try
-        {
-            using var searcher = new System.Management.ManagementObjectSearcher("SELECT Name FROM Win32_Processor");
-            foreach (var obj in searcher.Get())
-            {
-                return obj["Name"]?.ToString()?.Trim() ?? "未知";
-            }
-        }
-        catch (Exception ex)
-        {
-            LogService.Instance.Warning("[SystemInfoHelper.GetCpuNameInternal] 执行失败", ex);
-        }
-        return "未知";
+        return _staticInfoCached ? _cachedCpuName : GetCpuInfoInternal().name;
     }
 
     public static string GetCpuCores()
     {
-        return _staticInfoCached ? _cachedCpuCores : GetCpuCoresInternal();
+        return _staticInfoCached ? _cachedCpuCores : GetCpuInfoInternal().cores;
     }
 
-    private static string GetCpuCoresInternal()
+    /// <summary>一次 WMI 查询同时拿 CPU 型号与核心数（原来是两次查询）。</summary>
+    private static (string name, string cores) GetCpuInfoInternal()
     {
         try
         {
-            using var searcher = new System.Management.ManagementObjectSearcher("SELECT NumberOfCores, NumberOfLogicalProcessors FROM Win32_Processor");
+            using var searcher = new System.Management.ManagementObjectSearcher(
+                "SELECT Name, NumberOfCores, NumberOfLogicalProcessors FROM Win32_Processor");
             foreach (var obj in searcher.Get())
             {
+                var name = obj["Name"]?.ToString()?.Trim() ?? "未知";
                 var cores = obj["NumberOfCores"]?.ToString() ?? "0";
                 var threads = obj["NumberOfLogicalProcessors"]?.ToString() ?? "0";
-                return $"{cores}核 / {threads}线程";
+                return (name, $"{cores}核 / {threads}线程");
             }
         }
         catch (Exception ex)
         {
-            LogService.Instance.Warning("[SystemInfoHelper.GetCpuCoresInternal] 执行失败", ex);
+            LogService.Instance.Warning("[SystemInfoHelper.GetCpuInfoInternal] 执行失败", ex);
         }
-        return "未知";
+        return ("未知", "未知");
     }
 
     public static double GetCpuUsagePercent()
@@ -541,18 +543,43 @@ public static class SystemInfoHelper
 
     public static string GetMemorySpeed()
     {
-        return _staticInfoCached ? _cachedMemorySpeed : GetMemorySpeedInternal();
+        return _staticInfoCached ? _cachedMemorySpeed : GetMemoryModulesInternal().speed;
     }
 
-    private static string GetMemorySpeedInternal()
+    public static string GetMemoryType()
+    {
+        return _staticInfoCached ? _cachedMemoryType : GetMemoryModulesInternal().type;
+    }
+
+    /// <summary>一次 WMI 查询同时拿内存类型与频率（原来是两次查询）。</summary>
+    private static (string type, string speed) GetMemoryModulesInternal()
     {
         try
         {
-            using var searcher = new System.Management.ManagementObjectSearcher("SELECT ConfiguredClockSpeed FROM Win32_PhysicalMemory");
+            using var searcher = new System.Management.ManagementObjectSearcher(
+                "SELECT SMBIOSMemoryType, ConfiguredClockSpeed FROM Win32_PhysicalMemory");
             ulong totalSpeed = 0;
             int count = 0;
+            string type = "未知";
             foreach (var obj in searcher.Get())
             {
+                if (type == "未知")
+                {
+                    var typeObj = obj["SMBIOSMemoryType"];
+                    if (typeObj != null)
+                    {
+                        type = Convert.ToInt32(typeObj) switch
+                        {
+                            20 => "DDR",
+                            21 => "DDR2",
+                            22 => "DDR2 FB-DIMM",
+                            24 => "DDR3",
+                            26 => "DDR4",
+                            34 => "DDR5",
+                            var id => $"Unknown ({id})"
+                        };
+                    }
+                }
                 var speed = obj["ConfiguredClockSpeed"];
                 if (speed != null)
                 {
@@ -560,87 +587,118 @@ public static class SystemInfoHelper
                     count++;
                 }
             }
-            if (count > 0)
-            {
-                var avgSpeed = totalSpeed / (ulong)count;
-                return $"{avgSpeed} MHz";
-            }
+            var speedText = count > 0 ? $"{totalSpeed / (ulong)count} MHz" : "未知";
+            return (type, speedText);
         }
         catch (Exception ex)
         {
-            LogService.Instance.Warning("[SystemInfoHelper.GetMemorySpeedInternal] 执行失败", ex);
+            LogService.Instance.Warning("[SystemInfoHelper.GetMemoryModulesInternal] 执行失败", ex);
         }
-        return "未知";
-    }
-
-    public static string GetMemoryType()
-    {
-        return _staticInfoCached ? _cachedMemoryType : GetMemoryTypeInternal();
-    }
-
-    private static string GetMemoryTypeInternal()
-    {
-        try
-        {
-            using var searcher = new System.Management.ManagementObjectSearcher("SELECT SMBIOSMemoryType FROM Win32_PhysicalMemory");
-            foreach (var obj in searcher.Get())
-            {
-                var type = obj["SMBIOSMemoryType"];
-                if (type != null)
-                {
-                    var typeId = Convert.ToInt32(type);
-                    return typeId switch
-                    {
-                        20 => "DDR",
-                        21 => "DDR2",
-                        22 => "DDR2 FB-DIMM",
-                        24 => "DDR3",
-                        26 => "DDR4",
-                        34 => "DDR5",
-                        _ => $"Unknown ({typeId})"
-                    };
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            LogService.Instance.Warning("[SystemInfoHelper.GetMemoryTypeInternal] 执行失败", ex);
-        }
-        return "未知";
+        return ("未知", "未知");
     }
 
     public static string GetGpuName()
     {
-        return _staticInfoCached ? _cachedGpuName : GetGpuNameInternal();
+        return _staticInfoCached ? _cachedGpuName : GetVideoControllerInternal().names;
     }
 
-    private static string GetGpuNameInternal()
+    public static string GetGpuDriverVersion()
+    {
+        return _staticInfoCached ? _cachedGpuDriver : GetVideoControllerInternal().drivers;
+    }
+
+    public static string GetMonitorResolution()
+    {
+        return _staticInfoCached ? _cachedMonitorResolution : GetVideoControllerInternal().resolution;
+    }
+
+    public static string GetMonitorRefreshRate()
+    {
+        return _staticInfoCached ? _cachedMonitorRefreshRate : GetVideoControllerInternal().refresh;
+    }
+
+    private static bool IsVirtualGpu(string name) =>
+        name.Contains("Microsoft Basic Render") ||
+        name.Contains("Remote Display") ||
+        name.Contains("RemoteFX") ||
+        name.Contains("Virtual") ||
+        name.Contains("DDA") ||
+        name.Contains("RDP");
+
+    /// <summary>一次 WMI 查询同时拿显卡型号/驱动/分辨率/刷新率（原来是四次查询）。</summary>
+    private static (string names, string drivers, string resolution, string refresh) GetVideoControllerInternal()
     {
         try
         {
-            using var searcher = new System.Management.ManagementObjectSearcher("SELECT Name FROM Win32_VideoController");
-            var gpus = new System.Collections.Generic.List<string>();
+            using var searcher = new System.Management.ManagementObjectSearcher(
+                "SELECT Name, DriverVersion, CurrentHorizontalResolution, CurrentVerticalResolution, CurrentRefreshRate FROM Win32_VideoController");
+            var names = new System.Collections.Generic.List<string>();
+            var drivers = new System.Collections.Generic.List<string>();
+            string resolution = "未知";
+            string refresh = "未知";
             foreach (var obj in searcher.Get())
             {
-                var name = obj["Name"]?.ToString();
-                if (!string.IsNullOrEmpty(name) &&
-                    !name.Contains("Microsoft Basic Render") &&
-                    !name.Contains("Remote Display") &&
-                    !name.Contains("RemoteFX") &&
-                    !name.Contains("Virtual") &&
-                    !name.Contains("DDA") &&
-                    !name.Contains("RDP"))
+                var name = obj["Name"]?.ToString() ?? "";
+                bool isVirtual = IsVirtualGpu(name);
+                if (!isVirtual)
                 {
-                    gpus.Add(name);
+                    if (!string.IsNullOrEmpty(name)) names.Add(name);
+                    var driver = obj["DriverVersion"]?.ToString();
+                    if (!string.IsNullOrEmpty(driver)) drivers.Add(driver);
+                }
+
+                // 分辨率/刷新率优先取非虚拟显卡
+                var w = obj["CurrentHorizontalResolution"];
+                var h = obj["CurrentVerticalResolution"];
+                if (w != null && h != null)
+                {
+                    int wi = Convert.ToInt32(w);
+                    int hi = Convert.ToInt32(h);
+                    if (wi > 0 && hi > 0 && (resolution == "未知" || !isVirtual))
+                    {
+                        resolution = $"{wi} x {hi}";
+                        var rate = obj["CurrentRefreshRate"];
+                        if (rate != null && Convert.ToInt32(rate) > 0)
+                            refresh = $"{Convert.ToInt32(rate)} Hz";
+                        else
+                            refresh = "未知";
+                    }
                 }
             }
-            return gpus.Count > 0 ? string.Join("\n", gpus) : "未知";
+
+            if (refresh == "未知")
+            {
+                try
+                {
+                    using var searcher2 = new System.Management.ManagementObjectSearcher("SELECT DisplayFrequency FROM Win32_DisplayConfiguration");
+                    foreach (var obj in searcher2.Get())
+                    {
+                        var freq = obj["DisplayFrequency"];
+                        if (freq != null && Convert.ToInt32(freq) > 0)
+                        {
+                            refresh = $"{Convert.ToInt32(freq)} Hz";
+                            break;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogService.Instance.Warning("[SystemInfoHelper.GetVideoControllerInternal] 刷新率兜底查询失败", ex);
+                }
+            }
+
+            return (
+                names.Count > 0 ? string.Join("\n", names) : "未知",
+                drivers.Count > 0 ? string.Join("\n", drivers) : "未知",
+                resolution,
+                refresh
+            );
         }
         catch (Exception ex)
         {
-            LogService.Instance.Warning("[SystemInfoHelper.GetGpuNameInternal] 执行失败", ex);
+            LogService.Instance.Warning("[SystemInfoHelper.GetVideoControllerInternal] 执行失败", ex);
         }
-        return "未知";
+        return ("未知", "未知", "未知", "未知");
     }
 
     public static string GetGpuMemory()
@@ -650,6 +708,8 @@ public static class SystemInfoHelper
 
     private static string GetGpuMemoryInternal()
     {
+        lock (_lock)
+        {
         try
         {
             var computer = GetComputer();
@@ -680,6 +740,7 @@ public static class SystemInfoHelper
             LogService.Instance.Warning("[SystemInfoHelper.GetGpuMemoryInternal] 执行失败", ex);
         }
         return "未知";
+        }
     }
 
     public static double GetGpuMemoryUsagePercent()
@@ -764,64 +825,17 @@ public static class SystemInfoHelper
         }
     }
 
-    public static string GetGpuDriverVersion()
-    {
-        return _staticInfoCached ? _cachedGpuDriver : GetGpuDriverInternal();
-    }
-
-    private static string GetGpuDriverInternal()
-    {
-        try
-        {
-            using var searcher = new System.Management.ManagementObjectSearcher("SELECT Name, DriverVersion FROM Win32_VideoController");
-            var drivers = new System.Collections.Generic.List<string>();
-            foreach (var obj in searcher.Get())
-            {
-                var name = obj["Name"]?.ToString() ?? "";
-                if (name.Contains("Microsoft Basic Render") ||
-                    name.Contains("Remote Display") ||
-                    name.Contains("RemoteFX") ||
-                    name.Contains("Virtual") ||
-                    name.Contains("DDA") ||
-                    name.Contains("RDP"))
-                {
-                    continue;
-                }
-                var driver = obj["DriverVersion"]?.ToString();
-                if (!string.IsNullOrEmpty(driver))
-                {
-                    drivers.Add(driver);
-                }
-            }
-            return drivers.Count > 0 ? string.Join("\n", drivers) : "未知";
-        }
-        catch (Exception ex)
-        {
-            LogService.Instance.Warning("[SystemInfoHelper.GetGpuDriverInternal] 执行失败", ex);
-        }
-        return "未知";
-    }
-
     public static string GetTotalDiskSize()
     {
+        // 复用 GetDiskDrives 的 WMI 缓存，不再单独查一次 Win32_DiskDrive
         try
         {
+            var drives = GetDiskDrives();
             ulong totalBytes = 0;
-            using var searcher = new System.Management.ManagementObjectSearcher("SELECT Size, MediaType FROM Win32_DiskDrive");
-            foreach (var obj in searcher.Get())
-            {
-                var mediaType = obj["MediaType"]?.ToString() ?? "";
-                if (mediaType.Contains("Fixed") || mediaType.Contains("SSD") || string.IsNullOrEmpty(mediaType))
-                {
-                    var size = obj["Size"];
-                    if (size != null)
-                    {
-                        totalBytes += Convert.ToUInt64(size);
-                    }
-                }
-            }
-            var totalGB = totalBytes / 1024.0 / 1024.0 / 1024.0;
-            return $"{totalGB:F0} GB";
+            foreach (var d in drives)
+                totalBytes += d.SizeBytes;
+            if (totalBytes > 0)
+                return $"{totalBytes / 1024.0 / 1024.0 / 1024.0:F0} GB";
         }
         catch (Exception ex)
         {
@@ -895,6 +909,7 @@ public static class SystemInfoHelper
     {
         public string Model { get; set; } = "未知";
         public string Size { get; set; } = "";
+        public ulong SizeBytes { get; set; }
         public double? HealthPercent { get; set; }
         public string HealthText => HealthPercent.HasValue ? $"{HealthPercent.Value:F0}%" : "--";
     }
@@ -917,10 +932,14 @@ public static class SystemInfoHelper
                 var model = obj["Model"]?.ToString()?.Trim();
                 if (string.IsNullOrEmpty(model)) continue;
                 var size = obj["Size"];
+                ulong sizeBytes = 0;
+                if (size != null && ulong.TryParse(size.ToString(), out var parsed))
+                    sizeBytes = parsed;
                 result.Add(new DiskDriveDetail
                 {
                     Model = model,
-                    Size = size != null ? $"{Convert.ToUInt64(size) / 1024.0 / 1024.0 / 1024.0:F0} GB" : ""
+                    Size = sizeBytes > 0 ? $"{sizeBytes / 1024.0 / 1024.0 / 1024.0:F0} GB" : "",
+                    SizeBytes = sizeBytes
                 });
             }
         }
@@ -1173,89 +1192,6 @@ public static class SystemInfoHelper
             return new string(arr.Where(c => c != 0).Select(c => (char)c).ToArray());
         }
         return "";
-    }
-
-    public static string GetMonitorResolution()
-    {
-        return _staticInfoCached ? _cachedMonitorResolution : GetMonitorResolutionInternal();
-    }
-
-    private static string GetMonitorResolutionInternal()
-    {
-        try
-        {
-            using var searcher = new System.Management.ManagementObjectSearcher("SELECT CurrentHorizontalResolution, CurrentVerticalResolution FROM Win32_VideoController");
-            foreach (var obj in searcher.Get())
-            {
-                var width = obj["CurrentHorizontalResolution"];
-                var height = obj["CurrentVerticalResolution"];
-                if (width != null && height != null)
-                {
-                    var w = Convert.ToInt32(width);
-                    var h = Convert.ToInt32(height);
-                    if (w > 0 && h > 0)
-                    {
-                        return $"{w} x {h}";
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            LogService.Instance.Warning("[SystemInfoHelper.GetMonitorResolutionInternal] 执行失败", ex);
-        }
-        return "未知";
-    }
-
-    public static string GetMonitorRefreshRate()
-    {
-        return _staticInfoCached ? _cachedMonitorRefreshRate : GetMonitorRefreshRateInternal();
-    }
-
-    private static string GetMonitorRefreshRateInternal()
-    {
-        try
-        {
-            using var searcher = new System.Management.ManagementObjectSearcher("SELECT CurrentRefreshRate FROM Win32_VideoController");
-            foreach (var obj in searcher.Get())
-            {
-                var refreshRate = obj["CurrentRefreshRate"];
-                if (refreshRate != null)
-                {
-                    var rate = Convert.ToInt32(refreshRate);
-                    if (rate > 0)
-                    {
-                        return $"{rate} Hz";
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            LogService.Instance.Warning("[SystemInfoHelper.GetMonitorRefreshRateInternal] 执行失败", ex);
-        }
-        
-        try
-        {
-            using var searcher = new System.Management.ManagementObjectSearcher("SELECT DisplayFrequency FROM Win32_DisplayConfiguration");
-            foreach (var obj in searcher.Get())
-            {
-                var freq = obj["DisplayFrequency"];
-                if (freq != null)
-                {
-                    var rate = Convert.ToInt32(freq);
-                    if (rate > 0)
-                    {
-                        return $"{rate} Hz";
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            LogService.Instance.Warning("[SystemInfoHelper.GetMonitorRefreshRateInternal] 执行失败", ex);
-        }
-        return "未知";
     }
 
     public static void Cleanup()
