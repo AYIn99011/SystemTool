@@ -172,7 +172,7 @@
                             <Button x:Name="FontDecreaseButton" Style="{StaticResource FluentButton}"
                                     Content="A-" Width="38" MinHeight="28" Padding="0"
                                     Click="FontDecrease_Click" ToolTip="减小字体"/>
-                            <TextBlock x:Name="FontScaleText" Text="100%" FontSize="12"
+                            <TextBlock x:Name="FontScaleText" Text="110%" FontSize="12"
                                        Foreground="{StaticResource TextSecondaryBrush}"
                                        VerticalAlignment="Center" Margin="8,0" MinWidth="40"
                                        TextAlignment="Center"/>

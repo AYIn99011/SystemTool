@@ -42,6 +42,7 @@ public partial class MainWindow : Window
         Loaded += MainWindow_Loaded;
         SourceInitialized += MainWindow_SourceInitialized;
         InitUpdateLogs();
+        ApplyFontScale(); // 默认 110%，启动即生效
     }
 
     private void InitUpdateLogs()
@@ -336,9 +337,9 @@ public partial class MainWindow : Window
         }
     }
 
-    // 字体缩放档位：90% ~ 130%
+    // 字体缩放档位：90% ~ 130%，默认 110%
     private static readonly double[] FontScales = { 0.9, 1.0, 1.1, 1.2, 1.3 };
-    private int _fontScaleIndex = 1;
+    private int _fontScaleIndex = 2;
 
     private void FontDecrease_Click(object sender, RoutedEventArgs e)
     {
