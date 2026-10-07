@@ -7,7 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <ApplicationIcon>1.ico</ApplicationIcon>
+    <ApplicationIcon>icon\1.ico</ApplicationIcon>
     <TieredCompilation>true</TieredCompilation>
   </PropertyGroup>
 
@@ -40,15 +40,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="1.ico" />
+    <Resource Include="icon\1.ico" />
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="ico\*.png" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Resource Include="tubiao\*.png" />
+    <Resource Include="icon\*.png" />
   </ItemGroup>
 
 
