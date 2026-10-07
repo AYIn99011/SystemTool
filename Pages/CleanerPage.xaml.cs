@@ -2361,7 +2361,7 @@ namespace SystemTool.Pages
         private List<string> ScanAllDrivesForCache(string[] appFolderNames, string[] cacheFolderNames)
         {
             var paths = new List<string>();
-            var skippedDirs = new List<string>(); // 无权限目录，扫描结束统一汇总，避免逐条刷屏
+            var skippedDirs = new SkippedDirs(); // 无权限目录，扫描结束统一汇总，避免逐条刷屏
 
             try
             {
@@ -2402,17 +2402,17 @@ namespace SystemTool.Pages
                                         }
                                     }
                                 }
-                                catch { AddSkippedDir(skippedDirs, appPath); }
+                                catch { skippedDirs.Add(appPath); }
                             }
                         }
                     }
-                    catch { AddSkippedDir(skippedDirs, drive.RootDirectory.FullName); }
+                    catch { skippedDirs.Add(drive.RootDirectory.FullName); }
                 }
             }
-            catch { AddSkippedDir(skippedDirs, "(未知)"); }
+            catch { skippedDirs.Add("(未知)"); }
 
-            if (skippedDirs.Count > 0)
-                LogService.Instance.Warning($"[CleanerPage.ScanAllDrivesForCache] 扫描跳过 {skippedDirs.Count} 个无权限目录: {string.Join("; ", skippedDirs)}");
+            if (skippedDirs.Total > 0)
+                LogService.Instance.Warning(skippedDirs.Summary("CleanerPage.ScanAllDrivesForCache"));
 
             return paths;
         }
@@ -2420,7 +2420,7 @@ namespace SystemTool.Pages
         private List<string> ScanAllDrivesForMusicAppCache(string appNamePattern, string[] cacheFolderNames)
         {
             var paths = new List<string>();
-            var skippedDirs = new List<string>(); // 无权限目录，扫描结束统一汇总
+            var skippedDirs = new SkippedDirs(); // 无权限目录，扫描结束统一汇总
 
             try
             {
@@ -2452,21 +2452,21 @@ namespace SystemTool.Pages
                             {
                                 ScanDirectoryForAppCache(searchPath, appNamePattern, cacheFolderNames, paths, 0, 3, skippedDirs);
                             }
-                            catch { AddSkippedDir(skippedDirs, searchPath); }
+                            catch { skippedDirs.Add(searchPath); }
                         }
                     }
-                    catch { AddSkippedDir(skippedDirs, drive.RootDirectory.FullName); }
+                    catch { skippedDirs.Add(drive.RootDirectory.FullName); }
                 }
             }
-            catch { AddSkippedDir(skippedDirs, "(未知)"); }
+            catch { skippedDirs.Add("(未知)"); }
 
-            if (skippedDirs.Count > 0)
-                LogService.Instance.Warning($"[CleanerPage.ScanAllDrivesForMusicAppCache] 扫描跳过 {skippedDirs.Count} 个无权限目录: {string.Join("; ", skippedDirs)}");
+            if (skippedDirs.Total > 0)
+                LogService.Instance.Warning(skippedDirs.Summary("CleanerPage.ScanAllDrivesForMusicAppCache"));
 
             return paths;
         }
 
-        private void ScanDirectoryForAppCache(string directory, string appNamePattern, string[] cacheFolderNames, List<string> foundPaths, int currentDepth, int maxDepth, List<string> skippedDirs)
+        private void ScanDirectoryForAppCache(string directory, string appNamePattern, string[] cacheFolderNames, List<string> foundPaths, int currentDepth, int maxDepth, SkippedDirs skippedDirs)
         {
             if (currentDepth > maxDepth)
                 return;
@@ -2477,6 +2477,9 @@ namespace SystemTool.Pages
                 {
                     try
                     {
+                        // 跳过软链接（junction/symlink）：它们多为指向已覆盖目录的兼容性别名
+                        if (new DirectoryInfo(dir).Attributes.HasFlag(FileAttributes.ReparsePoint))
+                            continue;
                         var dirName = Path.GetFileName(dir);
 
                         if (dirName.IndexOf(appNamePattern, StringComparison.OrdinalIgnoreCase) >= 0)
@@ -2504,7 +2507,7 @@ namespace SystemTool.Pages
                                     }
                                 }
                             }
-                            catch { AddSkippedDir(skippedDirs, dir); }
+                            catch { skippedDirs.Add(dir); }
                         }
 
                         if (currentDepth < maxDepth)
@@ -2512,18 +2515,30 @@ namespace SystemTool.Pages
                             ScanDirectoryForAppCache(dir, appNamePattern, cacheFolderNames, foundPaths, currentDepth + 1, maxDepth, skippedDirs);
                         }
                     }
-                    catch { AddSkippedDir(skippedDirs, dir); }
+                    catch { skippedDirs.Add(dir); }
                 }
             }
-            catch { AddSkippedDir(skippedDirs, directory); }
+            catch { skippedDirs.Add(directory); }
         }
 
-        /// <summary>记录无权限跳过的目录（去重，最多记50个，避免日志刷屏）。</summary>
-        private static void AddSkippedDir(List<string> skipped, string dir)
+        /// <summary>无权限跳过目录的记录器：记总数，名字去重保留前50个防刷屏。</summary>
+        private sealed class SkippedDirs
         {
-            if (skipped.Count >= 50) return;
-            if (!skipped.Contains(dir, StringComparer.OrdinalIgnoreCase))
-                skipped.Add(dir);
+            public int Total;
+            public readonly List<string> Names = new();
+            public void Add(string dir)
+            {
+                Total++;
+                if (Names.Count < 50 && !Names.Contains(dir, StringComparer.OrdinalIgnoreCase))
+                    Names.Add(dir);
+            }
+            public string Summary(string tag)
+            {
+                string s = $"[{tag}] 扫描跳过 {Total} 个无权限目录";
+                if (Names.Count > 0)
+                    s += ": " + string.Join("; ", Names) + (Total > Names.Count ? "; …" : "");
+                return s;
+            }
         }
 
         private void KillProcesses(string[] processNames)
