@@ -6,6 +6,7 @@
 
     <!-- 普通按钮 -->
     <Style x:Key="FluentButton" TargetType="Button">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
         <Setter Property="MinHeight" Value="32"/>
         <Setter Property="Padding" Value="12,4"/>
         <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}"/>
@@ -48,6 +49,31 @@
         <Setter Property="BorderBrush" Value="Transparent"/>
         <Setter Property="Foreground" Value="{StaticResource OnAccentBrush}"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="{StaticResource AccentHoverBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter Property="Background" Value="{StaticResource AccentPressedBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{StaticResource TextDisabledBrush}"/>
+                            <Setter Property="Background" Value="{StaticResource ControlFillBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <!-- 小型开关按钮（Fluent 风格，用于 ToggleButton；选中时淡蓝底） -->
