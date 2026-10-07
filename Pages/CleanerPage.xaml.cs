@@ -124,8 +124,11 @@ namespace SystemTool.Pages
             UpdateCustomizeToggleText();
         }
 
+        private bool _suppressCheckToggle;
+
         private void CategoryCheckBox_Toggled(object sender, RoutedEventArgs e)
         {
+            if (_suppressCheckToggle) return;
             if (sender is not CheckBox cb || cb.Tag is not string key) return;
             if (cb.IsChecked == true) _selectedKeys.Add(key);
             else _selectedKeys.Remove(key);
@@ -134,11 +137,38 @@ namespace SystemTool.Pages
             _ = RunEstimateAsync();
         }
 
+        private void SelectAllButton_Click(object sender, RoutedEventArgs e)
+            => SetAllCategoriesSelected(true);
+
+        private void ClearSelectionButton_Click(object sender, RoutedEventArgs e)
+            => SetAllCategoriesSelected(false);
+
+        private void SetAllCategoriesSelected(bool selected)
+        {
+            _suppressCheckToggle = true;
+            try
+            {
+                _selectedKeys.Clear();
+                if (selected)
+                    foreach (var c in _categories) _selectedKeys.Add(c.Key);
+                foreach (CheckBox cb in CategoryCheckPanel.Children)
+                    cb.IsChecked = selected;
+            }
+            finally
+            {
+                _suppressCheckToggle = false;
+            }
+            SaveSelection();
+            UpdateCustomizeToggleText();
+            _ = RunEstimateAsync();
+        }
+
         private void UpdateCustomizeToggleText()
         {
             int n = _categories.Count(c => _selectedKeys.Contains(c.Key));
-            string arrow = CustomizePanel.Visibility == Visibility.Visible ? "▴" : "▾";
-            CustomizeToggle.Content = $"自定义清理项（{n}/{_categories.Count}）{arrow}";
+            bool expanded = CustomizePanel.Visibility == Visibility.Visible;
+            CustomizeToggle.Content = expanded ? "收起 ▴" : "展开 ▾";
+            SelectedSummaryText.Text = $"已选择 {n} / {_categories.Count} 项";
         }
 
         private void CustomizeToggle_Click(object sender, RoutedEventArgs e)
