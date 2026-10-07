@@ -21,6 +21,31 @@ public static class ThemeManager
     private static ResourceDictionary? _darkDict;
     private static ResourceDictionary? _lightDict;
 
+    /// <summary>
+    /// 应用启动时调用（必须在主窗口创建之前）：
+    /// Application 级资源字典中的 SolidColorBrush 会被 WPF 自动冻结，
+    /// 这里把冻结的画刷替换为可写的克隆，否则原地换肤改 Color 时会抛
+    /// InvalidOperationException，导致整个 ApplyTheme 中止（换肤、DWM 背景都不生效）。
+    /// </summary>
+    public static void PrepareTheme()
+    {
+        try
+        {
+            var live = FindLiveThemeDict();
+            if (live == null) return;
+            foreach (var key in live.Keys.OfType<object>().ToList())
+            {
+                // Clone() 返回未冻结的可写副本；此时尚无界面元素引用旧画刷，直接替换即可
+                if (live[key] is SolidColorBrush b && b.IsFrozen)
+                    live[key] = b.Clone();
+            }
+        }
+        catch (Exception ex)
+        {
+            LogService.Instance.Warning("[ThemeManager] 预处理主题画刷失败", ex);
+        }
+    }
+
     /// <summary>读取系统设置：当前是否为浅色主题</summary>
     public static bool IsLightTheme()
     {

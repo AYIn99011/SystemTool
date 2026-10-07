@@ -12,6 +12,9 @@ public partial class App : Application
 {
     protected override void OnStartup(StartupEventArgs e)
     {
+        // 主题画刷解冻：必须在主窗口（StartupUri）创建之前，否则原地换肤会因画刷只读而整体失败
+        Helpers.ThemeManager.PrepareTheme();
+
         // 全局异常兜底：任何未被 catch 的异常都记入应用日志，而不是静默消失
         DispatcherUnhandledException += OnDispatcherUnhandledException;
         TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
