@@ -1,21 +1,37 @@
-# SystemTool · 系统工具箱
+# 系统工具箱
 
-Windows 桌面工具箱（WPF / .NET 10），集成设备信息、系统清理、系统优化、系统修复、实用工具与应用日志。
+Windows 桌面工具箱（WPF / .NET 10）：设备信息监控、系统垃圾清理、系统优化、系统修复、实用工具，一站式搞定日常维护。
 
-## 功能
+## 界面预览
 
-- **设备信息**：CPU / 内存 / 显卡 / 磁盘 / 温度实时监控
-- **系统清理**：浏览器、QQ、微信、音乐应用缓存清理，支持自定义清理范围
-- **系统优化**：常用优化项一键应用
-- **修复系统**：系统修复工具入口
-- **其他工具**：集成 GEEK 卸载工具、Win11Debloat 等第三方工具
-- **应用日志**：运行日志查看与导出
+### 设备信息
+
+![设备信息](docs/screenshots/device-info.png)
+
+### 清理垃圾
+
+![清理垃圾](docs/screenshots/cleaner.png)
+
+### 系统优化
+
+![系统优化](docs/screenshots/optimizer.png)
+
+## 功能介绍
+
+- **设备信息**：CPU 型号 / 核心线程 / 使用率 / 温度 / 整包功耗，内存 / 显卡 / 主板 / 显示器 / 硬盘（型号、容量、健康度）实时监控
+- **清理垃圾**：一键清理（系统缓存、浏览器、QQ、微信、音乐应用等，可自定义范围）+ 高级清理（16 项深度清理可单独勾选），清理前可预估可释放空间
+- **系统优化**：内存优化、大系统缓存、卓越性能电源计划、VBS 与内核隔离开关、快速启动等 16 项优化
+- **修复系统**：SFC / DISM 系统文件修复、网络修复（重置 Winsock / DNS / IP / 关闭代理）、桌面图标异常修复
+- **其他工具**：内嵌 GEEK 卸载工具、Win11Debloat 精简脚本包
+- **应用日志**：运行日志按级别筛选查看、导出，附带版本更新记录
+
+界面跟随 Windows 深浅色主题自动切换，支持 Acrylic / Mica 毛玻璃效果与字体缩放。
 
 ## 运行要求
 
 - Windows 10 / 11（x64）
 - **需要管理员权限运行**（硬件监控与系统清理需要）
-- .NET 10 运行时（发布包为单文件自包含，无需单独安装）
+- 发布包为单文件（`系统工具箱.exe`），无需单独安装 .NET 运行时
 
 ## CPU 温度说明
 
@@ -41,4 +57,10 @@ CPU 温度通过 [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/
 dotnet build -c Release -p:EnableWindowsTargeting=true
 ```
 
-产物在 `bin/Release/net10.0-windows/`。
+发布单文件包（VS 中可用 `FolderProfile` 发布配置）：
+
+```bash
+dotnet publish -p:PublishProfile=FolderProfile -p:EnableWindowsTargeting=true
+```
+
+产物为 `系统工具箱.exe`。
