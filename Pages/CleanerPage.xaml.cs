@@ -451,11 +451,10 @@ namespace SystemTool.Pages
         private List<string> GetSystemLogsEstimatePaths()
         {
             var win = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+            // 只统计 Windows\Logs 本体；CBS 与 DISM 是其子目录，清理时已递归覆盖，重复列入会导致预估翻倍
             return new()
             {
                 Path.Combine(win, "Logs"),
-                Path.Combine(win, "Logs", "CBS"),
-                Path.Combine(win, "Logs", "DISM"),
             };
         }
 
