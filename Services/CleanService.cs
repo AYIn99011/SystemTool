@@ -267,7 +267,7 @@ namespace SystemTool.Services
                         }
                         catch (Exception ex)
                         {
-                            LogService.Instance.Warning("[CleanService.GetEdgeCachePaths] 删除失败", ex);
+                            LogService.Instance.Warning("[CleanService.CleanPaths] 删除失败", ex);
                         }
                     }
                     else if (Directory.Exists(path))
@@ -280,7 +280,7 @@ namespace SystemTool.Services
                 }
                 catch (Exception ex)
                 {
-                    LogService.Instance.Warning("[CleanService.GetEdgeCachePaths] 删除失败", ex);
+                    LogService.Instance.Warning("[CleanService.CleanPaths] 删除失败", ex);
                 }
             }
 
@@ -307,7 +307,7 @@ namespace SystemTool.Services
                     }
                     catch (Exception ex)
                     {
-                        LogService.Instance.Warning("[CleanService.GetEdgeCachePaths] 删除失败", ex);
+                        LogService.Instance.Warning("[CleanService.DeleteDirectoryContents] 删除失败", ex);
                     }
                 });
 
@@ -320,13 +320,13 @@ namespace SystemTool.Services
                     }
                     catch (Exception ex)
                     {
-                        LogService.Instance.Warning("[CleanService.GetEdgeCachePaths] 删除失败", ex);
+                        LogService.Instance.Warning("[CleanService.DeleteDirectoryContents] 删除失败", ex);
                     }
                 }
             }
             catch (Exception ex)
             {
-                LogService.Instance.Warning("[CleanService.GetEdgeCachePaths] 删除失败", ex);
+                LogService.Instance.Warning("[CleanService.DeleteDirectoryContents] 删除失败", ex);
             }
 
             return (size, fileCount, dirCount);

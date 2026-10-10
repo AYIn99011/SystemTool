@@ -361,6 +361,61 @@
                         </ItemsControl>
                     </StackPanel>
                 </Border>
+
+                <!-- 电池：仅有电池的设备显示（台式机无此区） -->
+                <StackPanel x:Name="BatterySection" Visibility="Collapsed">
+                    <TextBlock Text="电池" Style="{StaticResource SectionTitle}"/>
+                    <Border Background="{StaticResource SectionFillBrush}"
+                            BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                            CornerRadius="8" Padding="16,12" Margin="0,0,0,20">
+                        <StackPanel>
+                            <Grid Margin="0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="名称" Style="{StaticResource InfoLabel}"/>
+                                <TextBlock x:Name="BatteryNameText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                            </Grid>
+                            <Border Height="1" Background="{StaticResource DividerBrush}"/>
+                            <Grid Margin="0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="剩余电量" Style="{StaticResource InfoLabel}"/>
+                                <TextBlock x:Name="BatteryChargeText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                            </Grid>
+                            <Border Height="1" Background="{StaticResource DividerBrush}"/>
+                            <Grid Margin="0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="状态" Style="{StaticResource InfoLabel}"/>
+                                <TextBlock x:Name="BatteryStatusText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                            </Grid>
+                            <Border Height="1" Background="{StaticResource DividerBrush}"/>
+                            <Grid Margin="0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="续航" Style="{StaticResource InfoLabel}"/>
+                                <TextBlock x:Name="BatteryTimeText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                            </Grid>
+                            <Border Height="1" Background="{StaticResource DividerBrush}"/>
+                            <Grid Margin="0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="健康度" Style="{StaticResource InfoLabel}"/>
+                                <TextBlock x:Name="BatteryHealthText" Grid.Column="1" Style="{StaticResource InfoValue}" Text="--"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
             </StackPanel>
         </Grid>
     </ScrollViewer>

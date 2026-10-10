@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Win32;
+using SystemTool.Helpers;
 using SystemTool.Services;
 
 namespace SystemTool.Pages;
@@ -30,77 +31,6 @@ public partial class OptimizerPage : Page
     public OptimizerPage()
     {
         InitializeComponent();
-    }
-
-    private async void ActivateWindows_Click(object sender, RoutedEventArgs e)
-    {
-        if (_isOperating)
-        {
-            LogService.Instance.Warning("正在执行其他操作，请稍候...");
-            return;
-        }
-
-        _isOperating = true;
-        LogService.Instance.Info("开始激活Windows...");
-
-        try
-        {
-            var result = await Task.Run(() =>
-            {
-                try
-                {
-                    var process = Process.Start(new ProcessStartInfo
-                    {
-                        FileName = "powershell.exe",
-                        Arguments = "-NoProfile -ExecutionPolicy Bypass -Command \"irm get.activated.win | iex\"",
-                        UseShellExecute = false,
-                        CreateNoWindow = true,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        Verb = "runas"
-                    });
-
-                    if (process == null)
-                    {
-                        return (false, "无法启动PowerShell");
-                    }
-
-                    var output = process.StandardOutput.ReadToEnd();
-                    var error = process.StandardError.ReadToEnd();
-                    process.WaitForExit(300000);
-
-                    if (process.ExitCode == 0)
-                    {
-                        return (true, output);
-                    }
-                    else
-                    {
-                        return (false, string.IsNullOrEmpty(error) ? output : error);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    return (false, ex.Message);
-                }
-            });
-
-            if (result.Item1)
-            {
-                LogService.Instance.Success("Windows激活命令执行成功");
-            }
-            else
-            {
-                LogService.Instance.Error($"Windows激活失败: {result.Item2}");
-            }
-        }
-        catch (Exception ex)
-        {
-            LogService.Instance.Error($"Windows激活失败: {ex.Message}");
-        }
-        finally
-        {
-            _isOperating = false;
-        }
     }
 
     private async void HideShortcutArrow_Click(object sender, RoutedEventArgs e)
@@ -346,20 +276,9 @@ public partial class OptimizerPage : Page
 
                     if (restartExplorer)
                     {
-                        foreach (var proc in Process.GetProcessesByName("explorer"))
-                        {
-                            try { proc.Kill(); }
-                            catch (Exception ex)
-                            {
-                                LogService.Instance.Warning("[OptimizerPage.ExecuteRegistryOperationAsync] 重启资源管理器失败", ex);
-                            }
-                        }
-                        Thread.Sleep(500);
-                        Process.Start(new ProcessStartInfo
-                        {
-                            FileName = "explorer.exe",
-                            UseShellExecute = true
-                        });
+                        bool explorerOk = SystemInfoHelper.RestartExplorer("OptimizerPage.ExecuteRegistryOperationAsync");
+                        if (!explorerOk)
+                            return (false, "资源管理器重启失败：桌面/任务栏可能未恢复，请按 Ctrl+Shift+Esc 打开任务管理器，运行 explorer.exe 手动恢复");
                     }
 
                     return (true, "");
@@ -412,7 +331,7 @@ public partial class OptimizerPage : Page
     {
         await ExecuteRegistryOperationAsync("开启快速启动", () =>
         {
-            var process = Process.Start(new ProcessStartInfo
+            using var process = Process.Start(new ProcessStartInfo
             {
                 FileName = "powercfg.exe",
                 Arguments = "-hibernate on",
@@ -420,6 +339,8 @@ public partial class OptimizerPage : Page
                 CreateNoWindow = true
             });
             process?.WaitForExit(10000);
+            if (process == null || process.ExitCode != 0)
+                throw new InvalidOperationException($"powercfg -hibernate on 失败，退出代码: {process?.ExitCode}");
 
             using var powerKey = Registry.LocalMachine.CreateSubKey(@"SYSTEM\CurrentControlSet\Control\Power");
             powerKey?.SetValue("HibernateEnabled", 1, RegistryValueKind.DWord);
@@ -446,7 +367,7 @@ public partial class OptimizerPage : Page
             {
                 try
                 {
-                    var listProcess = Process.Start(new ProcessStartInfo
+                    using var listProcess = Process.Start(new ProcessStartInfo
                     {
                         FileName = "powercfg.exe",
                         Arguments = "/list",
@@ -472,7 +393,7 @@ public partial class OptimizerPage : Page
                                 if (match.Success)
                                 {
                                     var guid = match.Groups[1].Value;
-                                    var setActiveProcess = Process.Start(new ProcessStartInfo
+                                    using var setActiveProcess = Process.Start(new ProcessStartInfo
                                     {
                                         FileName = "powercfg.exe",
                                         Arguments = $"/setactive {guid}",
@@ -480,7 +401,9 @@ public partial class OptimizerPage : Page
                                         CreateNoWindow = true
                                     });
                                     setActiveProcess?.WaitForExit(10000);
-                                    return (true, "卓越性能电源计划已激活");
+                                    if (setActiveProcess != null && setActiveProcess.ExitCode == 0)
+                                        return (true, "卓越性能电源计划已激活");
+                                    return (false, $"激活卓越性能计划失败，powercfg 退出代码: {setActiveProcess?.ExitCode}");
                                 }
                             }
                         }
@@ -509,7 +432,7 @@ public partial class OptimizerPage : Page
 
                     Thread.Sleep(500);
 
-                    var listProcess2 = Process.Start(new ProcessStartInfo
+                    using var listProcess2 = Process.Start(new ProcessStartInfo
                     {
                         FileName = "powercfg.exe",
                         Arguments = "/list",
@@ -534,7 +457,7 @@ public partial class OptimizerPage : Page
                             {
                                 var foundGuid = match.Groups[1].Value;
 
-                                var setActiveProcess = Process.Start(new ProcessStartInfo
+                                using var setActiveProcess = Process.Start(new ProcessStartInfo
                                 {
                                     FileName = "powercfg.exe",
                                     Arguments = $"/setactive {foundGuid}",
@@ -543,7 +466,9 @@ public partial class OptimizerPage : Page
                                 });
                                 setActiveProcess?.WaitForExit(10000);
 
-                                return (true, "卓越性能电源计划已创建并激活");
+                                if (setActiveProcess != null && setActiveProcess.ExitCode == 0)
+                                    return (true, "卓越性能电源计划已创建并激活");
+                                return (false, $"激活卓越性能计划失败，powercfg 退出代码: {setActiveProcess?.ExitCode}");
                             }
                         }
                     }
@@ -592,7 +517,7 @@ public partial class OptimizerPage : Page
             {
                 try
                 {
-                    var process = Process.Start(new ProcessStartInfo
+                    using var process = Process.Start(new ProcessStartInfo
                     {
                         FileName = "powercfg.exe",
                         Arguments = "/setactive 381b4222-f694-41f0-9685-ff5bb260df2e",
@@ -601,7 +526,9 @@ public partial class OptimizerPage : Page
                     });
 
                     process?.WaitForExit(10000);
-                    return (true, "已恢复平衡电源计划");
+                    if (process != null && process.ExitCode == 0)
+                        return (true, "已恢复平衡电源计划");
+                    return (false, $"恢复平衡电源计划失败，powercfg 退出代码: {process?.ExitCode}");
                 }
                 catch (Exception ex)
                 {
@@ -822,7 +749,7 @@ public partial class OptimizerPage : Page
             {
                 try
                 {
-                    var process = Process.Start(new ProcessStartInfo
+                    using var process = Process.Start(new ProcessStartInfo
                     {
                         FileName = "bcdedit.exe",
                         Arguments = "/set hypervisorlaunchtype off",
@@ -959,7 +886,16 @@ public partial class OptimizerPage : Page
                     else
                         results.Add("✗ 恢复Hypervisor启动类型失败：备份中无有效值");
 
-                    try { File.Delete(VbsBackupPath); } catch { }
+                    // 只有恢复全成功才删除备份；部分失败时保留备份以便精确重试
+                    bool restoreFailed = results.Any(r => r.StartsWith("✗"));
+                    if (!restoreFailed)
+                    {
+                        try { File.Delete(VbsBackupPath); } catch { }
+                    }
+                    else
+                    {
+                        LogService.Instance.Warning("[VBS] 部分恢复失败，已保留备份文件以便重试");
+                    }
                 }
                 else
                 {
@@ -1067,7 +1003,7 @@ public partial class OptimizerPage : Page
                     var tempRegFile = Path.Combine(Path.GetTempPath(), $"SystemTool_DisableLogs_{Guid.NewGuid():N}.reg");
                     File.WriteAllText(tempRegFile, regContent, System.Text.Encoding.Unicode);
 
-                    var process = Process.Start(new ProcessStartInfo
+                    using var process = Process.Start(new ProcessStartInfo
                     {
                         FileName = "regedit.exe",
                         Arguments = $"/s \"{tempRegFile}\"",
@@ -1104,7 +1040,7 @@ public partial class OptimizerPage : Page
 
                 try
                 {
-                    var process = Process.Start(new ProcessStartInfo
+                    using var process = Process.Start(new ProcessStartInfo
                     {
                         FileName = "netsh.exe",
                         Arguments = "wfp set options netevents=off",
@@ -1112,7 +1048,10 @@ public partial class OptimizerPage : Page
                         CreateNoWindow = true
                     });
                     process?.WaitForExit(10000);
-                    results.Add("✓ 禁用WfpDiag.ETL日志");
+                    if (process != null && process.ExitCode == 0)
+                        results.Add("✓ 禁用WfpDiag.ETL日志");
+                    else
+                        results.Add($"✗ 禁用WfpDiag.ETL日志失败，netsh 退出代码: {process?.ExitCode}");
                 }
                 catch (Exception ex)
                 {
@@ -1192,7 +1131,7 @@ public partial class OptimizerPage : Page
 
                 try
                 {
-                    var process = Process.Start(new ProcessStartInfo
+                    using var process = Process.Start(new ProcessStartInfo
                     {
                         FileName = "netsh.exe",
                         Arguments = "wfp set options netevents=on",
@@ -1201,9 +1140,16 @@ public partial class OptimizerPage : Page
                     });
                     process?.WaitForExit(10000);
 
-                    using var key4 = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\BFE\Parameters\Policy\Options", true);
-                    key4?.DeleteValue("CollectNetEvents", false);
-                    results.Add("✓ 恢复WfpDiag.ETL日志");
+                    if (process != null && process.ExitCode == 0)
+                    {
+                        using var key4 = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\BFE\Parameters\Policy\Options", true);
+                        key4?.DeleteValue("CollectNetEvents", false);
+                        results.Add("✓ 恢复WfpDiag.ETL日志");
+                    }
+                    else
+                    {
+                        results.Add($"✗ 恢复WfpDiag.ETL日志失败，netsh 退出代码: {process?.ExitCode}");
+                    }
                 }
                 catch (Exception ex)
                 {

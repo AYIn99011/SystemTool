@@ -60,6 +60,23 @@
                         </Grid>
                     </Border>
 
+                    <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
+                            BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
+                            Padding="18" Margin="6">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="激活 Windows" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Grid.Row="1" Text="使用 Microsoft Activation Scripts 激活 Windows 系统" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal">
+                                <Button Content="激活 Windows" Style="{StaticResource AccentButton}" Click="ActivateWindows_Click" Cursor="Hand"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
                 </UniformGrid>
 
             </StackPanel>

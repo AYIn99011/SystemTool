@@ -282,23 +282,6 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Text="激活 Windows" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
-                            <TextBlock Grid.Row="1" Text="使用 Microsoft Activation Scripts 激活 Windows 系统" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
-                            <StackPanel Grid.Row="2" Orientation="Horizontal">
-                                <Button Content="激活 Windows" Style="{StaticResource AccentButton}" Click="ActivateWindows_Click" Cursor="Hand"/>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-
-                    <Border Background="{StaticResource SectionFillBrush}" CornerRadius="12"
-                            BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1"
-                            Padding="18" Margin="6">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
                             <TextBlock Grid.Row="0" Text="暂停 Windows 更新" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
                             <TextBlock Grid.Row="1" Text="暂停系统自动更新到 2052 年" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
                             <StackPanel Grid.Row="2" Orientation="Horizontal">
@@ -317,7 +300,7 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <TextBlock Grid.Row="0" Text="禁用系统日志" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
-                            <TextBlock Grid.Row="1" Text="禁用组件堆栈、更新解压、登录报告、网络事件等日志" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
+                            <TextBlock Grid.Row="1" Text="禁用组件堆栈、更新解压、登录报告、网络事件等日志。注意：禁用后若系统出现问题，将无法通过日志排查原因。" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
                             <StackPanel Grid.Row="2" Orientation="Horizontal">
                                 <Button Content="禁用日志" Style="{StaticResource AccentButton}" Click="DisableSystemLogs_Click" Cursor="Hand"/>
                                 <Button Content="恢复日志" Style="{StaticResource FluentButton}" Click="EnableSystemLogs_Click" Margin="8,0,0,0" Cursor="Hand"/>

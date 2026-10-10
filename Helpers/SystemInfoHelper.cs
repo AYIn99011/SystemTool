@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
 using Microsoft.Win32;
 using LibreHardwareMonitor.Hardware;
 using SystemTool.Services;
@@ -271,11 +272,9 @@ public static class SystemInfoHelper
             if (temp > 0) return temp;
         }
 
-        double temp2 = GetCpuTemperatureFromWmi();
-        if (temp2 > 0) return temp2;
-
-        // 注意：MSAcpi_ThermalZoneTemperature 是主板热区温度，不是 CPU 温度，
-        // 曾被误标为"处理器温度"导致与 AIDA64 对不上。读不到真实 CPU 温度就返回 0（界面显示 --），不再拿错数充数。
+        // 注意：Win32_PerformanceFormattedData_Counters_ThermalZoneInformation
+        // 是主板热区温度，不是 CPU 温度，曾被误标为"处理器温度"导致与 AIDA64 对不上。
+        // 读不到真实 CPU 温度就返回 0（界面显示 --），不再拿错数充数。
         return 0;
     }
 
@@ -451,39 +450,6 @@ public static class SystemInfoHelper
         {
             LogService.Instance.Warning("[SystemInfoHelper.DumpLhmSensorsOnce] 执行失败", ex);
         }
-    }
-
-    private static bool? _wmiThermalZoneSupported;
-
-    private static double GetCpuTemperatureFromWmi()
-    {
-        // 该 WMI 类在这台机器上不存在的话是永久失败，记一次之后不再每秒重试刷屏
-        if (_wmiThermalZoneSupported == false) return 0;
-        try
-        {
-            using var searcher = new System.Management.ManagementObjectSearcher(
-                "SELECT Name, Temperature FROM Win32_PerformanceFormattedData_Counters_ThermalZoneInformation");
-            
-            foreach (var obj in searcher.Get())
-            {
-                var name = obj["Name"]?.ToString()?.ToLower() ?? "";
-                var temp = obj["Temperature"];
-                
-                if (temp != null && (name.Contains("cpu") || name.Contains("processor") || name.Contains("thermal")))
-                {
-                    var tempValue = Convert.ToDouble(temp);
-                    _wmiThermalZoneSupported = true;
-                    return tempValue - 273.15;
-                }
-            }
-            _wmiThermalZoneSupported = true; // 类存在，只是没匹配到温度项
-        }
-        catch (Exception ex)
-        {
-            _wmiThermalZoneSupported = false;
-            LogService.Instance.Warning("[SystemInfoHelper.GetCpuTemperatureFromWmi] 执行失败", ex);
-        }
-        return 0;
     }
 
     public static string GetTotalMemory()
@@ -1193,6 +1159,145 @@ public static class SystemInfoHelper
         }
         return "";
     }
+
+    /// <summary>
+    /// 重启资源管理器。先结束所有 explorer 进程再启动；启动失败时重试一次，
+    /// 仍失败返回 false，调用方应提示用户按 Ctrl+Shift+Esc 手动启动 explorer.exe。
+    /// </summary>
+    public static bool RestartExplorer(string logTag)
+    {
+        try
+        {
+            foreach (var proc in System.Diagnostics.Process.GetProcessesByName("explorer"))
+            {
+                using (proc)
+                {
+                    try { proc.Kill(); }
+                    catch (Exception ex)
+                    {
+                        LogService.Instance.Warning($"[{logTag}] 结束 explorer 失败", ex);
+                    }
+                }
+            }
+            Thread.Sleep(500);
+            for (int attempt = 0; attempt < 2; attempt++)
+            {
+                try
+                {
+                    using var p = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "explorer.exe",
+                        UseShellExecute = true
+                    });
+                    if (p != null) return true;
+                }
+                catch (Exception ex)
+                {
+                    LogService.Instance.Warning($"[{logTag}] 启动 explorer 失败（第 {attempt + 1} 次）", ex);
+                }
+                Thread.Sleep(1000);
+            }
+            return false;
+        }
+        catch (Exception ex)
+        {
+            LogService.Instance.Warning($"[{logTag}] 重启资源管理器失败", ex);
+            return false;
+        }
+    }
+
+    #region 电池
+
+    public sealed class BatteryInfo
+    {
+        public bool HasBattery { get; set; }
+        public string Name { get; set; } = "--";
+        public int ChargePercent { get; set; } = -1;
+        public int Status { get; set; }
+        public int EstimatedRunTimeMinutes { get; set; } = -1;
+        public int TimeToFullChargeMinutes { get; set; } = -1;
+        public uint DesignCapacity { get; set; }
+        public uint FullChargeCapacity { get; set; }
+        public double? HealthPercent =>
+            DesignCapacity > 0 && FullChargeCapacity > 0
+                ? Math.Round(FullChargeCapacity * 100.0 / DesignCapacity, 1)
+                : null;
+        /// <summary>BatteryStatus 6/7/8/9 为充电中。</summary>
+        public bool IsCharging => Status is 6 or 7 or 8 or 9;
+    }
+
+    /// <summary>读取电池信息；无电池（台式机）时 HasBattery=false。</summary>
+    public static BatteryInfo GetBatteryInfo()
+    {
+        var info = new BatteryInfo();
+        try
+        {
+            using var searcher = new System.Management.ManagementObjectSearcher(
+                "SELECT Name, BatteryStatus, EstimatedChargeRemaining, EstimatedRunTime, TimeToFullCharge, DesignCapacity, FullChargeCapacity FROM Win32_Battery");
+            foreach (System.Management.ManagementObject obj in searcher.Get())
+            {
+                info.HasBattery = true;
+                info.Name = Convert.ToString(obj["Name"]) ?? "--";
+                info.ChargePercent = ToIntOr(obj["EstimatedChargeRemaining"], -1);
+                info.Status = ToIntOr(obj["BatteryStatus"], 0);
+                info.EstimatedRunTimeMinutes = ToMinutesOrUnknown(obj["EstimatedRunTime"]);
+                info.TimeToFullChargeMinutes = ToMinutesOrUnknown(obj["TimeToFullCharge"]);
+                info.DesignCapacity = ToUIntOr(obj["DesignCapacity"]);
+                info.FullChargeCapacity = ToUIntOr(obj["FullChargeCapacity"]);
+                break; // 只取第一块电池
+            }
+        }
+        catch (Exception ex)
+        {
+            LogService.Instance.Warning("[SystemInfoHelper.GetBatteryInfo] 读取电池信息失败", ex);
+        }
+        return info;
+    }
+
+    /// <summary>WMI 时间字段为 0xFFFFFFFF 时表示未知。</summary>
+    private static int ToMinutesOrUnknown(object? value)
+    {
+        try
+        {
+            if (value == null) return -1;
+            ulong v = Convert.ToUInt64(value);
+            if (v >= 0xFFFFFFFE) return -1;
+            return (int)Math.Min(v, int.MaxValue);
+        }
+        catch { return -1; }
+    }
+
+    private static int ToIntOr(object? value, int fallback)
+    {
+        try { return value == null ? fallback : Convert.ToInt32(value); }
+        catch { return fallback; }
+    }
+
+    private static uint ToUIntOr(object? value)
+    {
+        try { return value == null ? 0 : Convert.ToUInt32(value); }
+        catch { return 0; }
+    }
+
+    public static string GetBatteryStatusText(int status) => status switch
+    {
+        3 => "已充满",
+        4 => "电量低",
+        5 => "电量严重不足",
+        6 or 7 or 8 or 9 => "充电中",
+        11 => "部分充电",
+        _ => "使用电池",
+    };
+
+    /// <summary>分钟数格式化为"X小时Y分"；&lt;0 显示"--"。</summary>
+    public static string FormatMinutes(int minutes)
+    {
+        if (minutes < 0) return "--";
+        if (minutes < 60) return $"{minutes}分";
+        return $"{minutes / 60}小时{minutes % 60}分";
+    }
+
+    #endregion
 
     public static void Cleanup()
     {

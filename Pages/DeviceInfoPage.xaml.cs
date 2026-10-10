@@ -13,6 +13,9 @@ public partial class DeviceInfoPage : Page
     private bool _isLoading = false;
     private readonly object _diskRefreshLock = new();
     private int _diskRefreshTick = 0;
+    private readonly object _batteryRefreshLock = new();
+    private int _batteryRefreshTick = 0;
+    private int _isRefreshing = 0; // 防止 Tick 重入堆积
 
     public DeviceInfoPage()
     {
@@ -57,7 +60,13 @@ public partial class DeviceInfoPage : Page
 
     private void RefreshTimer_Tick(object? sender, EventArgs e)
     {
-        _ = System.Threading.Tasks.Task.Run(() => LoadDynamicSystemInfoAsync());
+        // 上一次刷新还没跑完就跳过，避免 WMI 卡住时后台任务堆积
+        if (System.Threading.Interlocked.Exchange(ref _isRefreshing, 1) == 1) return;
+        _ = System.Threading.Tasks.Task.Run(() =>
+        {
+            try { LoadDynamicSystemInfoAsync(); }
+            finally { System.Threading.Interlocked.Exchange(ref _isRefreshing, 0); }
+        });
     }
 
     private void LoadStaticSystemInfoAsync()
@@ -107,6 +116,16 @@ public partial class DeviceInfoPage : Page
                     MonitorResolutionText.Text = SystemInfoHelper.GetMonitorResolution();
                     MonitorRefreshRateText.Text = SystemInfoHelper.GetMonitorRefreshRate();
                     LogService.Instance.Info($"显示器: {MonitorNameText.Text}");
+
+                    // 电池：仅有电池的设备显示
+                    var battery = SystemInfoHelper.GetBatteryInfo();
+                    if (battery.HasBattery)
+                    {
+                        BatterySection.Visibility = Visibility.Visible;
+                        BatteryNameText.Text = battery.Name;
+                        BatteryHealthText.Text = battery.HealthPercent.HasValue ? $"{battery.HealthPercent:F1}%" : "--";
+                        LogService.Instance.Info($"电池: {battery.Name}");
+                    }
 
                     LogService.Instance.Success("静态设备信息加载完成");
                     _isStaticInfoLoaded = true;
@@ -164,6 +183,18 @@ public partial class DeviceInfoPage : Page
             if (refreshDiskSensors)
                 SystemInfoHelper.UpdateDiskDriveSensors(SystemInfoHelper.GetDiskDrives());
 
+            // 电池变化慢，约每 5 秒刷新一次即可
+            SystemInfoHelper.BatteryInfo? batteryInfo = null;
+            lock (_batteryRefreshLock)
+            {
+                _batteryRefreshTick++;
+                if (_batteryRefreshTick >= 5)
+                {
+                    _batteryRefreshTick = 0;
+                    batteryInfo = SystemInfoHelper.GetBatteryInfo();
+                }
+            }
+
             Dispatcher.BeginInvoke(() =>
             {
                 try
@@ -190,6 +221,15 @@ public partial class DeviceInfoPage : Page
                     UpdateTempColor(GpuTempText, gpuTemp);
 
                     DiskUsageText.Text = diskUsage;
+
+                    if (batteryInfo != null && batteryInfo.HasBattery)
+                    {
+                        BatteryChargeText.Text = batteryInfo.ChargePercent >= 0 ? $"{batteryInfo.ChargePercent}%" : "--";
+                        BatteryStatusText.Text = SystemInfoHelper.GetBatteryStatusText(batteryInfo.Status);
+                        BatteryTimeText.Text = batteryInfo.IsCharging
+                            ? (batteryInfo.TimeToFullChargeMinutes >= 0 ? $"充满还需 {SystemInfoHelper.FormatMinutes(batteryInfo.TimeToFullChargeMinutes)}" : "--")
+                            : (batteryInfo.Status == 3 ? "已充满" : $"预计续航 {SystemInfoHelper.FormatMinutes(batteryInfo.EstimatedRunTimeMinutes)}");
+                    }
 
                     if (refreshDiskSensors)
                     {

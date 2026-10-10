@@ -16,7 +16,7 @@ public partial class RepairPage : Page
     {
         try
         {
-            var process = new Process
+            using var process = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
@@ -39,7 +39,7 @@ public partial class RepairPage : Page
     {
         try
         {
-            var process = new Process
+            using var process = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
@@ -62,11 +62,11 @@ public partial class RepairPage : Page
     {
         try
         {
-            Process.Start(new ProcessStartInfo
+            using (Process.Start(new ProcessStartInfo
             {
                 FileName = "https://img.kookapp.cn/attachments/2025-05/19/682b34c651cb8.zip",
                 UseShellExecute = true
-            });
+            })) { }
         }
         catch
         {
@@ -95,7 +95,7 @@ public partial class RepairPage : Page
         // 再以管理员身份跑 netsh / ipconfig（需要提权，沿用本页其它修复项的弹窗 cmd 风格）
         try
         {
-            var process = new Process
+            using var process = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
@@ -173,31 +173,22 @@ public partial class RepairPage : Page
                 }
 
                 Services.LogService.Instance.Info("[桌面图标异常修复] 正在重启资源管理器...");
-                foreach (var proc in Process.GetProcessesByName("explorer"))
+                bool explorerOk = SystemTool.Helpers.SystemInfoHelper.RestartExplorer("桌面图标异常修复");
+                if (!explorerOk)
                 {
-                    try { proc.Kill(); }
-                    catch (Exception ex)
-                    {
-                        Services.LogService.Instance.Warning($"[桌面图标异常修复] 结束 explorer 失败 - {ex.Message}");
-                    }
+                    Services.LogService.Instance.Error("[桌面图标异常修复] 资源管理器重启失败");
                 }
 
-                Thread.Sleep(500);
-
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = "explorer.exe",
-                    UseShellExecute = true
-                });
-
-                return (totalSize, fileCount);
+                return (totalSize, fileCount, explorerOk);
             });
 
             Services.LogService.Instance.Success(
-                $"桌面图标异常修复完成：删除 {result.fileCount} 个缓存文件，释放 {cleanService.FormatSize(result.totalSize)}，资源管理器已重启");
+                $"桌面图标异常修复完成：删除 {result.fileCount} 个缓存文件，释放 {cleanService.FormatSize(result.totalSize)}" +
+                (result.explorerOk ? "，资源管理器已重启" : "，但资源管理器重启失败：请按 Ctrl+Shift+Esc 打开任务管理器，运行 explorer.exe 手动恢复"));
             MessageBox.Show(
-                $"修复完成：删除 {result.fileCount} 个缓存文件，释放 {cleanService.FormatSize(result.totalSize)}。",
-                "桌面图标异常修复", MessageBoxButton.OK, MessageBoxImage.Information);
+                $"修复完成：删除 {result.fileCount} 个缓存文件，释放 {cleanService.FormatSize(result.totalSize)}。" +
+                (result.explorerOk ? "" : "\n\n注意：资源管理器重启失败，请按 Ctrl+Shift+Esc 打开任务管理器，运行 explorer.exe 手动恢复桌面。"),
+                "桌面图标异常修复", MessageBoxButton.OK, result.explorerOk ? MessageBoxImage.Information : MessageBoxImage.Warning);
         }
         catch (Exception ex)
         {

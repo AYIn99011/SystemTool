@@ -276,8 +276,8 @@ public partial class MainWindow : Window
         if (_currentPageTag == tag)
             return;
 
-        UnloadCurrentPage();
-
+        // 注：页面实例被缓存复用（_deviceInfoPage ??= new ...），切换时不销毁；
+        // DeviceInfoPage 的定时器在其自身 Unloaded 事件中停止，无需在此清理。
         _currentPageTag = tag;
 
         switch (tag)
@@ -306,16 +306,6 @@ public partial class MainWindow : Window
                 _logPage ??= new LogPage();
                 MainFrame.Navigate(_logPage);
                 break;
-        }
-    }
-
-    private void UnloadCurrentPage()
-    {
-        if (MainFrame.Content is Page currentPage)
-        {
-            if (currentPage is DeviceInfoPage devicePage)
-            {
-            }
         }
     }
 

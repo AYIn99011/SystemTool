@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Reflection;
@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Windows;
 using System.Windows.Controls;
 using SystemTool.Services;
+using SystemTool.Windows;
 
 namespace SystemTool.Pages;
 
@@ -19,6 +20,8 @@ public partial class ToolsPage : Page
 
     /// <summary>Win11Debloat.zip 内 Run.bat 的 SHA256 期望值；解压后校验，通过才执行。</summary>
     private const string ExpectedDebloatRunBatSha256 = "BA11528F47CB8A945D1EE48D13FF342FB2319656B021404C9D3B7099B0AE6DBD";
+
+    private bool _isOperating;
 
     public ToolsPage()
     {
@@ -38,6 +41,17 @@ public partial class ToolsPage : Page
                 LogService.Instance.Info("已清理 Win11Debloat 临时文件");
             }
 
+            // GEEK 临时文件使用唯一文件名，退出时按通配符清理（含崩溃残留）
+            foreach (var f in Directory.GetFiles(Path.GetTempPath(), "GEEK-*.exe"))
+            {
+                try
+                {
+                    File.Delete(f);
+                    LogService.Instance.Info($"已清理 GEEK.exe 临时文件: {Path.GetFileName(f)}");
+                }
+                catch { }
+            }
+            // 兼容旧版本固定文件名残留
             string geekPath = Path.Combine(Path.GetTempPath(), "GEEK.exe");
             if (File.Exists(geekPath))
             {
@@ -55,7 +69,7 @@ public partial class ToolsPage : Page
     {
         try
         {
-            var tempPath = Path.Combine(Path.GetTempPath(), "GEEK.exe");
+            var tempPath = Path.Combine(Path.GetTempPath(), $"GEEK-{Guid.NewGuid():N}.exe");
 
             var assembly = typeof(ToolsPage).Assembly;
             using (var stream = assembly.GetManifestResourceStream("GEEK.exe"))
@@ -87,11 +101,11 @@ public partial class ToolsPage : Page
 
                 File.WriteAllBytes(tempPath, data);
 
-                Process.Start(new ProcessStartInfo
+                using (Process.Start(new ProcessStartInfo
                 {
                     FileName = tempPath,
                     UseShellExecute = true
-                });
+                })) { }
                 LogService.Instance.Info("已启动Geek卸载工具");
             }
         }
@@ -164,7 +178,7 @@ public partial class ToolsPage : Page
             LogService.Instance.Info("Run.bat 哈希校验通过");
 
             // 5. 执行
-            var process = new Process
+            using var process = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
@@ -205,5 +219,83 @@ public partial class ToolsPage : Page
             }
         }
         return null;
+    }
+
+    private async void ActivateWindows_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isOperating)
+        {
+            LogService.Instance.Warning("正在执行其他操作，请稍候...");
+            return;
+        }
+
+        // 先显示中文引导，用户确认后再启动英文菜单的激活脚本
+        var guide = new MasGuideWindow { Owner = Window.GetWindow(this) };
+        if (guide.ShowDialog() != true)
+        {
+            return;
+        }
+
+        _isOperating = true;
+        LogService.Instance.Info("开始激活Windows...");
+
+        try
+        {
+            var result = await Task.Run(() =>
+            {
+                try
+                {
+                    var process = Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "powershell.exe",
+                        Arguments = "-NoProfile -ExecutionPolicy Bypass -Command \"irm get.activated.win | iex\"",
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true
+                        // 注：Verb="runas" 仅在 UseShellExecute=true 时有效，此处提权由 app.manifest 的 requireAdministrator 保证
+                    });
+
+                    if (process == null)
+                    {
+                        return (false, "无法启动PowerShell");
+                    }
+
+                    var output = process.StandardOutput.ReadToEnd();
+                    var error = process.StandardError.ReadToEnd();
+                    process.WaitForExit(300000);
+
+                    if (process.ExitCode == 0)
+                    {
+                        return (true, output);
+                    }
+                    else
+                    {
+                        return (false, string.IsNullOrEmpty(error) ? output : error);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return (false, ex.Message);
+                }
+            });
+
+            if (result.Item1)
+            {
+                LogService.Instance.Success("Windows激活命令执行成功");
+            }
+            else
+            {
+                LogService.Instance.Error($"Windows激活失败: {result.Item2}");
+            }
+        }
+        catch (Exception ex)
+        {
+            LogService.Instance.Error($"Windows激活失败: {ex.Message}");
+        }
+        finally
+        {
+            _isOperating = false;
+        }
     }
 }

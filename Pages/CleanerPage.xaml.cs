@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -53,8 +54,8 @@ namespace SystemTool.Pages
 
         private readonly List<CleanCategory> _categories = new();
         private readonly HashSet<string> _selectedKeys = new(StringComparer.OrdinalIgnoreCase);
-        /// <summary>上次扫描的各分类大小（Key=分类Key）。</summary>
-        private Dictionary<string, long> _lastEstimates = new(StringComparer.OrdinalIgnoreCase);
+        /// <summary>上次扫描的各分类大小（Key=分类Key）。预估任务可并发触发，用线程安全字典。</summary>
+        private ConcurrentDictionary<string, long> _lastEstimates = new(StringComparer.OrdinalIgnoreCase);
         private static readonly string SelectionFile = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "SystemTool", "clean_selection.txt");
@@ -735,12 +736,12 @@ namespace SystemTool.Pages
             {
                 await Task.Run(() =>
                 {
-                    Process.Start(new ProcessStartInfo
+                    using (Process.Start(new ProcessStartInfo
                     {
                         FileName = "WSReset.exe",
                         UseShellExecute = true,
                         WindowStyle = ProcessWindowStyle.Hidden
-                    });
+                    })) { }
                 });
                 LogService.Instance.Success("微软应用商店缓存清理已启动");
             }
@@ -796,33 +797,15 @@ namespace SystemTool.Pages
                         LogService.Instance.Info($"  Windows日志目录不存在");
                     }
 
-                    string cbsLogPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Logs", "CBS");
-                    if (Directory.Exists(cbsLogPath))
-                    {
-                        var cbsResult = DeleteDirectoryContents(cbsLogPath);
-                        totalSize += cbsResult.Size;
-                        fileCount += cbsResult.Count;
-                        dirCount += cbsResult.DirCount;
-                        LogService.Instance.Info($"  CBS日志: 删除 {cbsResult.Count} 个文件, 释放 {FormatSize(cbsResult.Size)}");
-                    }
-
-                    string dismLogPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Logs", "DISM");
-                    if (Directory.Exists(dismLogPath))
-                    {
-                        var dismResult = DeleteDirectoryContents(dismLogPath);
-                        totalSize += dismResult.Size;
-                        fileCount += dismResult.Count;
-                        LogService.Instance.Info($"  DISM日志: 删除 {dismResult.Count} 个文件, 释放 {FormatSize(dismResult.Size)}");
-                    }
-
+                    // 注：DeleteDirectoryContents 已递归清空 Windows\Logs 下所有子目录（含 CBS/DISM），无需单独处理
                     LogService.Instance.Info("正在清理Windows事件日志...");
-                    Process.Start(new ProcessStartInfo
+                    using (Process.Start(new ProcessStartInfo
                     {
                         FileName = "cmd.exe",
                         Arguments = "/c wevtutil el | foreach { wevtutil cl $_ }",
                         UseShellExecute = true,
                         WindowStyle = ProcessWindowStyle.Hidden
-                    });
+                    })) { }
 
                     return (totalSize, fileCount, dirCount);
                 });
@@ -2734,8 +2717,11 @@ namespace SystemTool.Pages
                     var processes = Process.GetProcessesByName(processName);
                     foreach (var process in processes)
                     {
-                        process.Kill();
-                        process.WaitForExit(3000);
+                        using (process)
+                        {
+                            process.Kill();
+                            process.WaitForExit(3000);
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -2769,7 +2755,7 @@ namespace SystemTool.Pages
                             }
                             catch (Exception ex)
                             {
-                                LogService.Instance.Warning("[CleanerPage.KillProcesses] 删除失败", ex);
+                                LogService.Instance.Warning("[CleanerPage.CleanCachePaths] 删除失败", ex);
                             }
                         }
 
@@ -2782,13 +2768,13 @@ namespace SystemTool.Pages
                             }
                             catch (Exception ex)
                             {
-                                LogService.Instance.Warning("[CleanerPage.KillProcesses] 删除失败", ex);
+                                LogService.Instance.Warning("[CleanerPage.CleanCachePaths] 删除失败", ex);
                             }
                         }
                     }
                     catch (Exception ex)
                     {
-                        LogService.Instance.Warning("[CleanerPage.KillProcesses] 删除失败", ex);
+                        LogService.Instance.Warning("[CleanerPage.CleanCachePaths] 删除失败", ex);
                     }
                 }
             }
@@ -2904,7 +2890,7 @@ namespace SystemTool.Pages
                     }
                     catch (Exception ex)
                     {
-                        LogService.Instance.Warning("[CleanerPage.ExecuteAsync] 删除失败", ex);
+                        LogService.Instance.Warning("[CleanerPage.DeleteDirectoryContents] 删除失败", ex);
                     }
                 });
 
@@ -2917,13 +2903,13 @@ namespace SystemTool.Pages
                     }
                     catch (Exception ex)
                     {
-                        LogService.Instance.Warning("[CleanerPage.ExecuteAsync] 删除失败", ex);
+                        LogService.Instance.Warning("[CleanerPage.DeleteDirectoryContents] 删除失败", ex);
                     }
                 }
             }
             catch (Exception ex)
             {
-                LogService.Instance.Warning("[CleanerPage.ExecuteAsync] 删除失败", ex);
+                LogService.Instance.Warning("[CleanerPage.DeleteDirectoryContents] 删除失败", ex);
             }
 
             return (size, fileCount, dirCount);
