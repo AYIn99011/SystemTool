@@ -2,7 +2,6 @@
 using System.IO;
 using System.Net.Http;
 using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Microsoft.Win32;
 
@@ -11,7 +10,7 @@ namespace SystemTool.Services;
 /// <summary>
 /// PawnIO 测温驱动安装服务。
 /// LibreHardwareMonitor 0.9.5+ 改用 PawnIO 驱动读取 CPU MSR，但驱动需单独安装；
-/// 未安装时所有 CPU 温度传感器读数为 null。本服务负责检测、下载（带哈希与签名校验）、静默安装。
+/// 未安装时所有 CPU 温度传感器读数为 null。本服务负责检测、下载（带 SHA-256 完整性校验）、静默安装。
 /// 静默参数与成功退出码来自社区实测：-install -silent，0/183/3010 均视为成功。
 /// </summary>
 public static class PawnIoDriverService
@@ -19,11 +18,16 @@ public static class PawnIoDriverService
     private static readonly Uri InstallerUri =
         new("https://github.com/namazso/PawnIO.Setup/releases/download/2.2.0/PawnIO_setup.exe");
 
+    // ===== 安全模型：防篡改的唯一屏障 =====
+    // 安装包完整性唯一依赖下面的 SHA-256 硬编码哈希。安装包在交付系统执行前的
+    // 每一条入口（内置解包 / 网络下载 / 本地复用）都必须通过 CheckSha256，
+    // 且执行前会再复核一次；任一失败即删除文件并中止安装，绝不执行未通过哈希的文件。
+    // 注意：本服务不做 X509 证书链验证（WinVerifyTrust）。SHA-256 已钉死安装包的
+    // 精确字节，任何篡改（替换/降级/位翻转）都会改变哈希；"只比证书指纹、不验
+    // 信任链"属于半吊子实现，会给安全审计造成"已完整验签"的假象，故彻底移除，
+    // 职责单一、表述诚实。
     private const string ExpectedSha256 =
         "1F519A22E47187F70A1379A48CA604981C4FCF694F4E65B734AAA74A9FBA3032";
-
-    private const string ExpectedSignerThumbprint =
-        "F380DCC9F706E2756A5047B832FFE719E1BC35F5";
 
     private const string InstallerFileName = "PawnIO_setup_2.2.0.exe";
     private const string DeclineFlagFileName = "pawnio_prompt_declined.txt";
@@ -182,14 +186,17 @@ public static class PawnIoDriverService
                 LogService.Instance.Info("[PawnIoDriverService] 本地已有校验通过的安装包，跳过解包/下载");
             }
 
-            progress?.Report("正在校验数字签名…");
-            if (!CheckSignerThumbprint(installerPath))
+            // 执行前完整性复核：收窄"校验通过 → 交付执行"之间的 TOCTOU 窗口。
+            // 未通过则删除文件并坚决中止，绝不将未通过哈希检查的文件交付系统执行。
+            progress?.Report("正在做执行前完整性复核…");
+            if (!CheckSha256(installerPath))
             {
-                const string msg = "安装包签名校验未通过（签名者不是 namazso.eu），已中止安装。";
+                const string msg = "安装包完整性校验未通过（SHA-256 不匹配），已中止安装。";
                 LogService.Instance.Warning("[PawnIoDriverService] " + msg);
+                try { File.Delete(installerPath); } catch { }
                 return (InstallResult.Failed, msg);
             }
-            LogService.Instance.Info("[PawnIoDriverService] 签名校验通过");
+            LogService.Instance.Info("[PawnIoDriverService] 安装包完整性复核通过，开始执行");
 
             progress?.Report("正在静默安装驱动…");
             LogService.Instance.Info("[PawnIoDriverService] 启动静默安装");
@@ -327,33 +334,29 @@ public static class PawnIoDriverService
         }
     }
 
+    /// <summary>
+    /// SHA-256 完整性校验：防篡改的唯一屏障。
+    /// 流式计算哈希（不一次性读入内存）；字节级常量时间比对，防时序侧信道；
+    /// 校验失败记准确日志（含期望/实际哈希）并返回 false，调用方必须中止且不得执行该文件。
+    /// </summary>
     private static bool CheckSha256(string path)
     {
         try
         {
             using var stream = File.OpenRead(path);
-            string actual = Convert.ToHexString(SHA256.HashData(stream));
-            return string.Equals(actual, ExpectedSha256, StringComparison.OrdinalIgnoreCase);
+            byte[] actual = SHA256.HashData(stream);
+            byte[] expected = Convert.FromHexString(ExpectedSha256);
+            bool ok = CryptographicOperations.FixedTimeEquals(actual, expected);
+            if (!ok)
+            {
+                LogService.Instance.Warning(
+                    $"[PawnIoDriverService] 安装包哈希校验未通过：期望 {ExpectedSha256}，实际 {Convert.ToHexString(actual)}（{path}），拒绝执行");
+            }
+            return ok;
         }
         catch (Exception ex)
         {
             LogService.Instance.Warning($"[PawnIoDriverService] 校验安装包哈希失败（{path}）", ex);
-            return false;
-        }
-    }
-
-    private static bool CheckSignerThumbprint(string path)
-    {
-        try
-        {
-#pragma warning disable SYSLIB0057 // .NET 10 暂无直接替代品用于从 PE 提取签名证书，该 API 仍可用
-            using var cert = new X509Certificate2(X509Certificate.CreateFromSignedFile(path));
-#pragma warning restore SYSLIB0057
-            return string.Equals(cert.Thumbprint, ExpectedSignerThumbprint, StringComparison.OrdinalIgnoreCase);
-        }
-        catch (Exception ex)
-        {
-            LogService.Instance.Warning("[PawnIoDriverService] 读取安装包签名失败", ex);
             return false;
         }
     }
@@ -376,10 +379,72 @@ public static class PawnIoDriverService
         }
         catch (OperationCanceledException)
         {
-            if (cancellationToken.IsCancellationRequested) throw; // 调用方取消，透传
+            if (cancellationToken.IsCancellationRequested)
+            {
+                // 调用方主动取消：同样连根拔起，避免安装程序在后台继续跑成孤儿
+                await KillProcessTreeAsync(process, "用户取消安装");
+                throw;
+            }
             LogService.Instance.Warning("[PawnIoDriverService] 静默安装超时（10 分钟），按安装失败处理");
-            try { if (!process.HasExited) process.Kill(); } catch { }
+            await KillProcessTreeAsync(process, "安装超时");
             return InstallTimeoutExitCode;
+        }
+    }
+
+    /// <summary>
+    /// 连根拔起进程树并等待其完全退出（30 秒上限，异步等待不阻塞 UI 线程）。
+    /// 用于安装超时 / 用户取消 / 致命异常时的清理：PawnIO_setup.exe 会派生
+    /// cmd.exe、msiexec、drvload 等子进程，只杀顶层会留下孤儿进程锁死驱动文件，
+    /// 导致后续重试直接报错。所有异常内部消化，永不抛出。
+    /// 调用方（InstallAsync 的 finally）在本方法返回后才释放互斥锁，
+    /// 因此锁的释放一定发生在进程树完全退出之后。
+    /// </summary>
+    private static async Task KillProcessTreeAsync(Process process, string context)
+    {
+        try
+        {
+            bool alreadyExited;
+            try { alreadyExited = process.HasExited; }
+            catch (InvalidOperationException) { alreadyExited = true; } // 进程对象已失效：视为已结束
+            catch { alreadyExited = false; }
+
+            if (!alreadyExited)
+            {
+                try
+                {
+                    // entireProcessTree: true —— 把派生子进程连根拔起，防止孤儿残留
+                    process.Kill(entireProcessTree: true);
+                }
+                catch (InvalidOperationException) { /* 竞态下已提前结束：忽略 */ }
+                catch (NotSupportedException)
+                {
+                    try { process.Kill(); } catch { /* 降级为只杀顶层 */ }
+                }
+                catch (Exception ex)
+                {
+                    LogService.Instance.Warning($"[PawnIoDriverService] {context}：终止进程树失败", ex);
+                }
+            }
+
+            // 等待进程完全退出、释放句柄；30 秒上限，超时不阻塞退出流程
+            try
+            {
+                using var waitCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                await process.WaitForExitAsync(waitCts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                LogService.Instance.Warning($"[PawnIoDriverService] {context}：进程树 30 秒内未完全退出");
+            }
+            catch (InvalidOperationException) { /* 已结束：忽略 */ }
+            catch (Exception ex)
+            {
+                LogService.Instance.Warning($"[PawnIoDriverService] {context}：等待进程退出异常", ex);
+            }
+        }
+        catch (Exception ex)
+        {
+            LogService.Instance.Warning($"[PawnIoDriverService] {context}：清理进程异常", ex);
         }
     }
 }
