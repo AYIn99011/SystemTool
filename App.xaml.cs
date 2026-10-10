@@ -31,6 +31,17 @@ public partial class App : Application
         base.OnStartup(e);
     }
 
+    protected override void OnExit(ExitEventArgs e)
+    {
+        // 全局保底清理：无论应用经由何种途径退出（Alt+F4、任务栏关闭、注销/关机），
+        // 解压工具残留与硬件监控资源都必须释放。
+        // 两个方法均为静态、幂等、内部抑制异常；此处再加一层保护，确保退出流程永不卡死。
+        try { Pages.ToolsPage.CleanupExtractedFiles(); } catch { }
+        try { Helpers.SystemInfoHelper.Cleanup(); } catch { }
+
+        base.OnExit(e);
+    }
+
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
         LogService.Instance.Error("未处理的 UI 线程异常", e.Exception);

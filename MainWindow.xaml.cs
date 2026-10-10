@@ -1,5 +1,7 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.ComponentModel;
+using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Threading;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -64,6 +66,7 @@ public partial class MainWindow : Window
 
         // 应用系统主题（深浅色自适应 + Acrylic/Mica 背景）
         Helpers.ThemeManager.ApplyTheme(this);
+        _currentThemeIsLight = Helpers.ThemeManager.IsLightTheme();
     }
 
     private void ResizeWindow(int edge)
@@ -120,15 +123,20 @@ public partial class MainWindow : Window
             ResizeWindow(HTBOTTOMRIGHT);
     }
 
+    // WM_SETTINGCHANGE 防抖与主题状态：广播高频时不立即重绘，只在 400ms 静默后检查一次；
+    // 若系统深浅色与当前应用主题一致则直接返回，避免无意义的 CPU 消耗与界面卡顿。
+    private DispatcherTimer? _themeDebounceTimer;
+    private bool _currentThemeIsLight;
+
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
         const int WM_GETMINMAXINFO = 0x0024;
         const int WM_SETTINGCHANGE = 0x001A;
 
-        // 系统主题（深色/浅色）切换时跟随换肤
+        // 系统设置变更广播：只做防抖调度，不拦截消息，默认分发继续（handled 保持 false）
         if (msg == WM_SETTINGCHANGE)
         {
-            Helpers.ThemeManager.ApplyTheme(this);
+            DebounceThemeRefresh();
         }
 
         if (msg == WM_GETMINMAXINFO)
@@ -149,8 +157,13 @@ public partial class MainWindow : Window
                 mmi.ptMaxSize.x = rcWorkArea.right - rcWorkArea.left;
                 mmi.ptMaxSize.y = rcWorkArea.bottom - rcWorkArea.top;
 
-                mmi.ptMinTrackSize.x = 800;
-                mmi.ptMinTrackSize.y = 600;
+                // DPI 自适应：ptMinTrackSize 的单位是物理像素，而 800x600 是逻辑尺寸（DIP），
+                // 必须乘以当前显示器 DPI 缩放比换算，否则高分屏下原生层限制与 WPF 层的
+                // MinWidth/MinHeight 冲突，导致布局溢出或内容截断。
+                // 每次收到消息都重新计算，多显示器拖拽切换 DPI（WM_DPICHANGED）时自动跟随。
+                var dpiScale = GetWindowDpiScale();
+                mmi.ptMinTrackSize.x = (int)Math.Round(800 * dpiScale.X);
+                mmi.ptMinTrackSize.y = (int)Math.Round(600 * dpiScale.Y);
             }
 
             Marshal.StructureToPtr(mmi, lParam, true);
@@ -158,6 +171,59 @@ public partial class MainWindow : Window
         }
 
         return IntPtr.Zero;
+    }
+
+    /// <summary>
+    /// 获取窗口当前所在显示器的 DPI 缩放比（X/Y）。
+    /// 使用 VisualTreeHelper.GetDpi，与 WPF 视觉树布局使用的缩放完全一致；
+    /// 读取失败时回退为 1.0，保证最小尺寸逻辑永不崩坏。
+    /// </summary>
+    private (double X, double Y) GetWindowDpiScale()
+    {
+        try
+        {
+            var dpi = VisualTreeHelper.GetDpi(this);
+            if (dpi.DpiScaleX > 0 && dpi.DpiScaleY > 0)
+                return (dpi.DpiScaleX, dpi.DpiScaleY);
+        }
+        catch { }
+        return (1.0, 1.0);
+    }
+
+    /// <summary>
+    /// WM_SETTINGCHANGE 防抖：短时间内连续收到多次广播时，只在最后一次广播
+    /// 400ms 后执行一次实际的主题检查，避免瞬间重复跑多次重绘逻辑。
+    /// </summary>
+    private void DebounceThemeRefresh()
+    {
+        if (_themeDebounceTimer == null)
+        {
+            _themeDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+            _themeDebounceTimer.Tick += OnThemeDebounceTick;
+        }
+        _themeDebounceTimer.Stop();
+        _themeDebounceTimer.Start();
+    }
+
+    /// <summary>
+    /// 防抖到期后执行：先读取系统实际深浅色配置，若与当前应用主题一致则直接
+    /// 返回、不做任何重绘；仅在真正发生变化时才调用 ApplyTheme。
+    /// </summary>
+    private void OnThemeDebounceTick(object? sender, EventArgs e)
+    {
+        _themeDebounceTimer?.Stop();
+        try
+        {
+            bool light = Helpers.ThemeManager.IsLightTheme();
+            if (light == _currentThemeIsLight)
+                return; // 主题未变化：不做任何重绘操作
+            _currentThemeIsLight = light;
+            Helpers.ThemeManager.ApplyTheme(this);
+        }
+        catch (Exception ex)
+        {
+            Services.LogService.Instance.Warning("[MainWindow] 防抖主题刷新失败", ex);
+        }
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -264,6 +330,18 @@ public partial class MainWindow : Window
         MaximizeGlyph.Visibility = maximized ? Visibility.Collapsed : Visibility.Visible;
         RestoreGlyph.Visibility = maximized ? Visibility.Visible : Visibility.Collapsed;
         MaximizeButton.ToolTip = maximized ? "还原" : "最大化";
+    }
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        // 任何窗口关闭途径（Alt+F4、任务栏右键关闭、系统注销等）都会经过此处：
+        // 先释放资源、清理解压工具残留，再走正常关闭流程。
+        // 两个方法均为静态、幂等、内部抑制异常；此处再加一层保护。
+        try { Helpers.SystemInfoHelper.Cleanup(); } catch { }
+        try { Pages.ToolsPage.CleanupExtractedFiles(); } catch { }
+        _themeDebounceTimer?.Stop();
+
+        base.OnClosing(e);
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
