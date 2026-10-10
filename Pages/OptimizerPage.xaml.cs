@@ -1,6 +1,8 @@
 ﻿using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Win32;
@@ -626,6 +628,158 @@ public partial class OptimizerPage : Page
         }
     }
 
+    #region VBS 备份与恢复
+
+    /// <summary>VBS 相关注册表/引导配置的原始状态备份；"开启 VBS"时优先恢复备份，而不是无脑全开。</summary>
+    private sealed class VbsBackup
+    {
+        public List<VbsRegValueBackup> RegValues { get; set; } = new();
+        public bool BcdHadValue { get; set; }
+        public string? BcdValue { get; set; }
+    }
+
+    private sealed class VbsRegValueBackup
+    {
+        public string SubKey { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string Label { get; set; } = "";
+        public bool Existed { get; set; }
+        public int Kind { get; set; }
+        public string? Value { get; set; }
+    }
+
+    private static string VbsBackupPath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "SystemTool", "vbs_backup.json");
+
+    private static void BackupVbsRegValue(VbsBackup backup, string subKey, string name, string label)
+    {
+        try
+        {
+            using var key = Registry.LocalMachine.OpenSubKey(subKey, writable: false);
+            bool existed = key != null && key.GetValueNames().Contains(name, StringComparer.OrdinalIgnoreCase);
+            var entry = new VbsRegValueBackup { SubKey = subKey, Name = name, Label = label, Existed = existed };
+            if (existed)
+            {
+                var kind = key!.GetValueKind(name);
+                entry.Kind = (int)kind;
+                entry.Value = Convert.ToString(key.GetValue(name), CultureInfo.InvariantCulture);
+            }
+            backup.RegValues.Add(entry);
+        }
+        catch (Exception ex)
+        {
+            LogService.Instance.Warning($"[VBS] 备份注册表值失败: {subKey}\\{name}", ex);
+        }
+    }
+
+    /// <summary>读取 bcdedit 中 hypervisorlaunchtype 的当前值；无该项返回 null（表示默认值）。</summary>
+    private static string? GetBcdHypervisorLaunchType(out bool hadValue)
+    {
+        hadValue = false;
+        try
+        {
+            using var process = Process.Start(new ProcessStartInfo
+            {
+                FileName = "bcdedit.exe",
+                Arguments = "/enum {current}",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                CreateNoWindow = true
+            });
+            if (process == null) return null;
+            string output = process.StandardOutput.ReadToEnd();
+            process.WaitForExit(10000);
+            foreach (var line in output.Split('\n'))
+            {
+                var t = line.Trim();
+                if (t.StartsWith("hypervisorlaunchtype", StringComparison.OrdinalIgnoreCase))
+                {
+                    var parts = t.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length >= 2)
+                    {
+                        hadValue = true;
+                        return parts[1];
+                    }
+                }
+            }
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static void RestoreVbsRegValue(VbsRegValueBackup entry, List<string> results)
+    {
+        try
+        {
+            using var key = Registry.LocalMachine.OpenSubKey(entry.SubKey, writable: true)
+                ?? Registry.LocalMachine.CreateSubKey(entry.SubKey);
+            if (key == null)
+            {
+                results.Add($"✗ 恢复{entry.Label}失败：无法打开注册表项");
+                return;
+            }
+            if (entry.Existed)
+            {
+                var kind = (RegistryValueKind)entry.Kind;
+                object value = kind switch
+                {
+                    RegistryValueKind.DWord => int.Parse(entry.Value ?? "0", CultureInfo.InvariantCulture),
+                    RegistryValueKind.QWord => long.Parse(entry.Value ?? "0", CultureInfo.InvariantCulture),
+                    _ => (object)(entry.Value ?? ""),
+                };
+                key.SetValue(entry.Name, value, kind);
+            }
+            else
+            {
+                // 禁用前该值不存在：删掉我们创建的值，还原本来面目
+                key.DeleteValue(entry.Name, throwOnMissingValue: false);
+            }
+            results.Add($"✓ 恢复{entry.Label}");
+        }
+        catch (Exception ex)
+        {
+            results.Add($"✗ 恢复{entry.Label}失败: {ex.Message}");
+        }
+    }
+
+    private static bool RunBcdedit(string arguments, List<string> results, string okLabel, string failLabel)
+    {
+        try
+        {
+            using var process = Process.Start(new ProcessStartInfo
+            {
+                FileName = "bcdedit.exe",
+                Arguments = arguments,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            });
+            if (process == null)
+            {
+                results.Add($"✗ {failLabel}：无法启动 bcdedit.exe");
+                return false;
+            }
+            process.WaitForExit(10000);
+            if (process.ExitCode == 0)
+            {
+                results.Add($"✓ {okLabel}");
+                return true;
+            }
+            results.Add($"✗ {failLabel}，bcdedit 退出代码: {process.ExitCode}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            results.Add($"✗ {failLabel}: {ex.Message}");
+            return false;
+        }
+    }
+
+    #endregion
+
     private async void DisableVBS_Click(object sender, RoutedEventArgs e)
     {
         if (_isOperating)
@@ -636,6 +790,29 @@ public partial class OptimizerPage : Page
 
         _isOperating = true;
         LogService.Instance.Info("开始关闭VBS和内核隔离...");
+
+        // 禁用前先备份原始状态（仅首次备份，避免重复禁用覆盖真正的原始值）
+        if (!File.Exists(VbsBackupPath))
+        {
+            try
+            {
+                var backup = new VbsBackup();
+                BackupVbsRegValue(backup, @"SYSTEM\CurrentControlSet\Control\DeviceGuard", "EnableVirtualizationBasedSecurity", "Device Guard");
+                BackupVbsRegValue(backup, @"SYSTEM\CurrentControlSet\Control\DeviceGuard", "RequireMicrosoftSignedBootChain", "Device Guard 启动链");
+                BackupVbsRegValue(backup, @"SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity", "Enabled", "内核完整性(HVCI)");
+                BackupVbsRegValue(backup, @"SYSTEM\CurrentControlSet\Control\Lsa", "LsaCfgFlags", "Credential Guard");
+                BackupVbsRegValue(backup, @"SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\SystemGuard", "Enabled", "System Guard");
+                backup.BcdValue = GetBcdHypervisorLaunchType(out bool hadValue);
+                backup.BcdHadValue = hadValue;
+                Directory.CreateDirectory(Path.GetDirectoryName(VbsBackupPath)!);
+                File.WriteAllText(VbsBackupPath, JsonSerializer.Serialize(backup));
+                LogService.Instance.Info("[VBS] 已备份禁用前的原始配置");
+            }
+            catch (Exception ex)
+            {
+                LogService.Instance.Warning("[VBS] 备份原始配置失败", ex);
+            }
+        }
 
         var results = new List<string>();
 
@@ -652,8 +829,18 @@ public partial class OptimizerPage : Page
                         UseShellExecute = false,
                         CreateNoWindow = true
                     });
-                    process?.WaitForExit(10000);
-                    results.Add("✓ 禁用Hypervisor启动类型");
+                    if (process != null)
+                    {
+                        process.WaitForExit(10000);
+                        if (process.ExitCode == 0)
+                            results.Add("✓ 禁用Hypervisor启动类型");
+                        else
+                            results.Add($"✗ 禁用Hypervisor失败，bcdedit 退出代码: {process.ExitCode}");
+                    }
+                    else
+                    {
+                        results.Add("✗ 无法启动 bcdedit.exe");
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -743,66 +930,86 @@ public partial class OptimizerPage : Page
         {
             await Task.Run(() =>
             {
-                try
+                // 有禁用前备份 → 精确恢复原始状态；无备份 → 沿用原来的"全部开启"（用户主动点的"开启 VBS"）
+                VbsBackup? backup = null;
+                if (File.Exists(VbsBackupPath))
                 {
-                    var process = Process.Start(new ProcessStartInfo
+                    try
                     {
-                        FileName = "bcdedit.exe",
-                        Arguments = "/set hypervisorlaunchtype auto",
-                        UseShellExecute = false,
-                        CreateNoWindow = true
-                    });
-                    process?.WaitForExit(10000);
-                    results.Add("✓ 启用Hypervisor启动类型");
-                }
-                catch (Exception ex)
-                {
-                    results.Add($"✗ 启用Hypervisor失败: {ex.Message}");
+                        backup = JsonSerializer.Deserialize<VbsBackup>(File.ReadAllText(VbsBackupPath));
+                        LogService.Instance.Info("[VBS] 检测到禁用前备份，将恢复原始配置");
+                    }
+                    catch (Exception ex)
+                    {
+                        LogService.Instance.Warning("[VBS] 读取备份失败，将执行默认开启逻辑", ex);
+                    }
                 }
 
-                try
+                if (backup != null)
                 {
-                    using var key1 = Registry.LocalMachine.CreateSubKey(@"SYSTEM\CurrentControlSet\Control\DeviceGuard");
-                    key1?.SetValue("EnableVirtualizationBasedSecurity", 1, RegistryValueKind.DWord);
-                    key1?.SetValue("RequireMicrosoftSignedBootChain", 1, RegistryValueKind.DWord);
-                    results.Add("✓ 启用Device Guard");
-                }
-                catch (Exception ex)
-                {
-                    results.Add($"✗ 启用Device Guard失败: {ex.Message}");
-                }
+                    foreach (var entry in backup.RegValues)
+                    {
+                        RestoreVbsRegValue(entry, results);
+                    }
 
-                try
-                {
-                    using var key2 = Registry.LocalMachine.CreateSubKey(@"SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity");
-                    key2?.SetValue("Enabled", 1, RegistryValueKind.DWord);
-                    results.Add("✓ 启用内核完整性(HVCI)");
-                }
-                catch (Exception ex)
-                {
-                    results.Add($"✗ 启用内核完整性失败: {ex.Message}");
-                }
+                    if (backup.BcdHadValue && !string.IsNullOrEmpty(backup.BcdValue))
+                        RunBcdedit($"/set hypervisorlaunchtype {backup.BcdValue}", results, "恢复Hypervisor启动类型", "恢复Hypervisor启动类型失败");
+                    else if (!backup.BcdHadValue)
+                        RunBcdedit("/deletevalue hypervisorlaunchtype", results, "恢复Hypervisor启动类型（默认值）", "恢复Hypervisor启动类型失败");
+                    else
+                        results.Add("✗ 恢复Hypervisor启动类型失败：备份中无有效值");
 
-                try
-                {
-                    using var key3 = Registry.LocalMachine.CreateSubKey(@"SYSTEM\CurrentControlSet\Control\Lsa");
-                    key3?.SetValue("LsaCfgFlags", 1, RegistryValueKind.DWord);
-                    results.Add("✓ 启用Credential Guard");
+                    try { File.Delete(VbsBackupPath); } catch { }
                 }
-                catch (Exception ex)
+                else
                 {
-                    results.Add($"✗ 启用Credential Guard失败: {ex.Message}");
-                }
+                    LogService.Instance.Info("[VBS] 无禁用前备份，执行默认开启逻辑");
+                    RunBcdedit("/set hypervisorlaunchtype auto", results, "启用Hypervisor启动类型", "启用Hypervisor失败");
 
-                try
-                {
-                    using var key4 = Registry.LocalMachine.CreateSubKey(@"SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\SystemGuard");
-                    key4?.SetValue("Enabled", 1, RegistryValueKind.DWord);
-                    results.Add("✓ 启用System Guard");
-                }
-                catch (Exception ex)
-                {
-                    results.Add($"✗ 启用System Guard失败: {ex.Message}");
+                    try
+                    {
+                        using var key1 = Registry.LocalMachine.CreateSubKey(@"SYSTEM\CurrentControlSet\Control\DeviceGuard");
+                        key1?.SetValue("EnableVirtualizationBasedSecurity", 1, RegistryValueKind.DWord);
+                        key1?.SetValue("RequireMicrosoftSignedBootChain", 1, RegistryValueKind.DWord);
+                        results.Add("✓ 启用Device Guard");
+                    }
+                    catch (Exception ex)
+                    {
+                        results.Add($"✗ 启用Device Guard失败: {ex.Message}");
+                    }
+
+                    try
+                    {
+                        using var key2 = Registry.LocalMachine.CreateSubKey(@"SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity");
+                        key2?.SetValue("Enabled", 1, RegistryValueKind.DWord);
+                        results.Add("✓ 启用内核完整性(HVCI)");
+                    }
+                    catch (Exception ex)
+                    {
+                        results.Add($"✗ 启用内核完整性失败: {ex.Message}");
+                    }
+
+                    try
+                    {
+                        using var key3 = Registry.LocalMachine.CreateSubKey(@"SYSTEM\CurrentControlSet\Control\Lsa");
+                        key3?.SetValue("LsaCfgFlags", 1, RegistryValueKind.DWord);
+                        results.Add("✓ 启用Credential Guard");
+                    }
+                    catch (Exception ex)
+                    {
+                        results.Add($"✗ 启用Credential Guard失败: {ex.Message}");
+                    }
+
+                    try
+                    {
+                        using var key4 = Registry.LocalMachine.CreateSubKey(@"SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\SystemGuard");
+                        key4?.SetValue("Enabled", 1, RegistryValueKind.DWord);
+                        results.Add("✓ 启用System Guard");
+                    }
+                    catch (Exception ex)
+                    {
+                        results.Add($"✗ 启用System Guard失败: {ex.Message}");
+                    }
                 }
             });
 
