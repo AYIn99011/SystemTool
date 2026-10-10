@@ -261,17 +261,33 @@ public partial class ToolsPage : Page
                         return (false, "无法启动PowerShell");
                     }
 
-                    var output = process.StandardOutput.ReadToEnd();
-                    var error = process.StandardError.ReadToEnd();
-                    process.WaitForExit(300000);
+                    using (process)
+                    {
+                        // 两路输出异步读取，避免 stdout/stderr 相互阻塞造成死锁
+                        var outputTask = Task.Run(() => process.StandardOutput.ReadToEnd());
+                        var errorTask = Task.Run(() => process.StandardError.ReadToEnd());
 
-                    if (process.ExitCode == 0)
-                    {
-                        return (true, output);
-                    }
-                    else
-                    {
-                        return (false, string.IsNullOrEmpty(error) ? output : error);
+                        if (!process.WaitForExit(300000))
+                        {
+                            // 超时：先杀进程再取已输出的内容，防止遗弃孤儿进程
+                            try { process.Kill(); } catch { /* 进程可能已退出 */ }
+                            var soFar = outputTask.IsCompletedSuccessfully ? outputTask.Result : string.Empty;
+                            var seFar = errorTask.IsCompletedSuccessfully ? errorTask.Result : string.Empty;
+                            var tail = string.IsNullOrEmpty(seFar) ? soFar : seFar;
+                            return (false, $"激活脚本执行超时（已超过 5 分钟），进程已被终止。{tail}");
+                        }
+
+                        var output = outputTask.Result;
+                        var error = errorTask.Result;
+
+                        if (process.ExitCode == 0)
+                        {
+                            return (true, output);
+                        }
+                        else
+                        {
+                            return (false, string.IsNullOrEmpty(error) ? output : error);
+                        }
                     }
                 }
                 catch (Exception ex)

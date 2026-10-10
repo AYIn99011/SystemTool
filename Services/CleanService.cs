@@ -297,7 +297,7 @@ namespace SystemTool.Services
             {
                 var dirInfo = new DirectoryInfo(path);
 
-                Parallel.ForEach(dirInfo.GetFiles("*", SearchOption.AllDirectories), file =>
+                Parallel.ForEach(dirInfo.EnumerateFiles("*", SearchOption.AllDirectories), file =>
                 {
                     try
                     {
@@ -311,7 +311,7 @@ namespace SystemTool.Services
                     }
                 });
 
-                foreach (var dir in dirInfo.GetDirectories("*", SearchOption.AllDirectories))
+                foreach (var dir in dirInfo.EnumerateDirectories("*", SearchOption.AllDirectories))
                 {
                     try
                     {

@@ -1596,7 +1596,7 @@ namespace SystemTool.Pages
                 var dirInfo = new DirectoryInfo(path);
                 LogService.Instance.Info($"清理目录: {path}");
 
-                foreach (var file in dirInfo.GetFiles("*", SearchOption.AllDirectories))
+                foreach (var file in dirInfo.EnumerateFiles("*", SearchOption.AllDirectories))
                 {
                     try
                     {
@@ -1610,7 +1610,7 @@ namespace SystemTool.Pages
                     }
                 }
 
-                foreach (var dir in dirInfo.GetDirectories("*", SearchOption.AllDirectories))
+                foreach (var dir in dirInfo.EnumerateDirectories("*", SearchOption.AllDirectories))
                 {
                     try
                     {
@@ -2745,7 +2745,7 @@ namespace SystemTool.Pages
                     {
                         var dirInfo = new DirectoryInfo(path);
 
-                        foreach (var file in dirInfo.GetFiles("*", SearchOption.AllDirectories))
+                        foreach (var file in dirInfo.EnumerateFiles("*", SearchOption.AllDirectories))
                         {
                             try
                             {
@@ -2759,7 +2759,7 @@ namespace SystemTool.Pages
                             }
                         }
 
-                        foreach (var dir in dirInfo.GetDirectories("*", SearchOption.AllDirectories))
+                        foreach (var dir in dirInfo.EnumerateDirectories("*", SearchOption.AllDirectories))
                         {
                             try
                             {
@@ -2799,7 +2799,7 @@ namespace SystemTool.Pages
                         int pathFiles = 0;
                         int pathDirs = 0;
 
-                        foreach (var file in dirInfo.GetFiles("*", SearchOption.AllDirectories))
+                        foreach (var file in dirInfo.EnumerateFiles("*", SearchOption.AllDirectories))
                         {
                             try
                             {
@@ -2813,7 +2813,7 @@ namespace SystemTool.Pages
                             }
                         }
 
-                        foreach (var dir in dirInfo.GetDirectories("*", SearchOption.AllDirectories))
+                        foreach (var dir in dirInfo.EnumerateDirectories("*", SearchOption.AllDirectories))
                         {
                             try
                             {
@@ -2880,7 +2880,7 @@ namespace SystemTool.Pages
             {
                 var dirInfo = new DirectoryInfo(path);
 
-                Parallel.ForEach(dirInfo.GetFiles("*", SearchOption.AllDirectories), file =>
+                Parallel.ForEach(dirInfo.EnumerateFiles("*", SearchOption.AllDirectories), file =>
                 {
                     try
                     {
@@ -2894,7 +2894,7 @@ namespace SystemTool.Pages
                     }
                 });
 
-                foreach (var dir in dirInfo.GetDirectories("*", SearchOption.AllDirectories))
+                foreach (var dir in dirInfo.EnumerateDirectories("*", SearchOption.AllDirectories))
                 {
                     try
                     {
