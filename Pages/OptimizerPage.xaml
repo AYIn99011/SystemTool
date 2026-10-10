@@ -286,6 +286,7 @@
                             <TextBlock Grid.Row="1" Text="暂停系统自动更新到 2052 年" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,14" TextWrapping="Wrap" MinHeight="34"/>
                             <StackPanel Grid.Row="2" Orientation="Horizontal">
                                 <Button Content="暂停更新" Style="{StaticResource AccentButton}" Click="PauseWindowsUpdate_Click" Cursor="Hand"/>
+                                <Button Content="恢复更新" Style="{StaticResource FluentButton}" Click="RestoreWindowsUpdate_Click" Margin="8,0,0,0" Cursor="Hand"/>
                             </StackPanel>
                         </Grid>
                     </Border>

@@ -1,8 +1,10 @@
 ﻿using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
+using System.Management;
 using System.Reflection;
 using System.Security.Cryptography;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using SystemTool.Services;
@@ -21,7 +23,7 @@ public partial class ToolsPage : Page
     /// <summary>Win11Debloat.zip 内 Run.bat 的 SHA256 期望值；解压后校验，通过才执行。</summary>
     private const string ExpectedDebloatRunBatSha256 = "BA11528F47CB8A945D1EE48D13FF342FB2319656B021404C9D3B7099B0AE6DBD";
 
-    private bool _isOperating;
+    private static bool _isOperating;
 
     public ToolsPage()
     {
@@ -221,6 +223,30 @@ public partial class ToolsPage : Page
         return null;
     }
 
+    /// <summary>
+    /// 独立校验 Windows 是否已激活：WMI 查询 SoftwareLicensingProduct 中
+    /// ApplicationId=55c92734-d682-4d71-983e-d6ec3f16059f 且 LicenseStatus==1 的记录。
+    /// 查询异常时返回 false（视为未能确认），不抛异常。
+    /// </summary>
+    private static bool IsWindowsLicenseActive()
+    {
+        try
+        {
+            using var searcher = new ManagementObjectSearcher(
+                "SELECT LicenseStatus FROM SoftwareLicensingProduct " +
+                "WHERE ApplicationId='55c92734-d682-4d71-983e-d6ec3f16059f' AND LicenseStatus=1");
+            foreach (var _ in searcher.Get())
+            {
+                return true;
+            }
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private async void ActivateWindows_Click(object sender, RoutedEventArgs e)
     {
         if (_isOperating)
@@ -250,15 +276,17 @@ public partial class ToolsPage : Page
                         FileName = "powershell.exe",
                         Arguments = "-NoProfile -ExecutionPolicy Bypass -Command \"irm get.activated.win | iex\"",
                         UseShellExecute = false,
-                        CreateNoWindow = true,
+                        CreateNoWindow = false,
                         RedirectStandardOutput = true,
-                        RedirectStandardError = true
+                        RedirectStandardError = true,
+                        StandardOutputEncoding = Encoding.UTF8,
+                        StandardErrorEncoding = Encoding.UTF8
                         // 注：Verb="runas" 仅在 UseShellExecute=true 时有效，此处提权由 app.manifest 的 requireAdministrator 保证
                     });
 
                     if (process == null)
                     {
-                        return (false, "无法启动PowerShell");
+                        return (0, "无法启动PowerShell");
                     }
 
                     using (process)
@@ -271,10 +299,11 @@ public partial class ToolsPage : Page
                         {
                             // 超时：先杀进程再取已输出的内容，防止遗弃孤儿进程
                             try { process.Kill(); } catch { /* 进程可能已退出 */ }
+                            try { process.WaitForExit(5000); } catch { /* 确认进程终止，异常忽略 */ }
                             var soFar = outputTask.IsCompletedSuccessfully ? outputTask.Result : string.Empty;
                             var seFar = errorTask.IsCompletedSuccessfully ? errorTask.Result : string.Empty;
                             var tail = string.IsNullOrEmpty(seFar) ? soFar : seFar;
-                            return (false, $"激活脚本执行超时（已超过 5 分钟），进程已被终止。{tail}");
+                            return (0, $"激活脚本执行超时（已超过 5 分钟），进程已被终止。{tail}");
                         }
 
                         var output = outputTask.Result;
@@ -282,23 +311,30 @@ public partial class ToolsPage : Page
 
                         if (process.ExitCode == 0)
                         {
-                            return (true, output);
+                            // 独立校验：ExitCode==0 仅代表脚本正常退出；必须 WMI 查到已激活
+                            // (ApplicationId=55c92734-d682-4d71-983e-d6ec3f16059f, LicenseStatus==1) 的记录才算成功
+                            return IsWindowsLicenseActive() ? (1, output) : (2, output);
                         }
                         else
                         {
-                            return (false, string.IsNullOrEmpty(error) ? output : error);
+                            return (0, string.IsNullOrEmpty(error) ? output : error);
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    return (false, ex.Message);
+                    return (0, ex.Message);
                 }
             });
 
-            if (result.Item1)
+            // 状态码：1=WMI 校验到已激活（成功）；2=脚本执行完成但未能确认状态；0=失败
+            if (result.Item1 == 1)
             {
                 LogService.Instance.Success("Windows激活命令执行成功");
+            }
+            else if (result.Item1 == 2)
+            {
+                LogService.Instance.Warning("脚本执行完成，未能确认状态");
             }
             else
             {

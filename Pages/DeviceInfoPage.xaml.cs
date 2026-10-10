@@ -15,6 +15,7 @@ public partial class DeviceInfoPage : Page
     private int _diskRefreshTick = 0;
     private readonly object _batteryRefreshLock = new();
     private int _batteryRefreshTick = 0;
+    private bool _hasBattery = true; // 启动时静态检测一次，无电池设备后续跳过电池 WMI 查询
     private int _isRefreshing = 0; // 防止 Tick 重入堆积
 
     public DeviceInfoPage()
@@ -117,8 +118,9 @@ public partial class DeviceInfoPage : Page
                     MonitorRefreshRateText.Text = SystemInfoHelper.GetMonitorRefreshRate();
                     LogService.Instance.Info($"显示器: {MonitorNameText.Text}");
 
-                    // 电池：仅有电池的设备显示
+                    // 电池：仅有电池的设备显示；顺手记录有无电池，供定时刷新跳过无电池设备的 WMI 查询
                     var battery = SystemInfoHelper.GetBatteryInfo();
+                    _hasBattery = battery.HasBattery;
                     if (battery.HasBattery)
                     {
                         BatterySection.Visibility = Visibility.Visible;
@@ -183,12 +185,12 @@ public partial class DeviceInfoPage : Page
             if (refreshDiskSensors)
                 SystemInfoHelper.UpdateDiskDriveSensors(SystemInfoHelper.GetDiskDrives());
 
-            // 电池变化慢，约每 5 秒刷新一次即可
+            // 电池变化慢，约每 5 秒刷新一次即可；无电池设备跳过 WMI 查询（tick 计数照常）
             SystemInfoHelper.BatteryInfo? batteryInfo = null;
             lock (_batteryRefreshLock)
             {
                 _batteryRefreshTick++;
-                if (_batteryRefreshTick >= 5)
+                if (_hasBattery && _batteryRefreshTick >= 5)
                 {
                     _batteryRefreshTick = 0;
                     batteryInfo = SystemInfoHelper.GetBatteryInfo();
@@ -220,7 +222,7 @@ public partial class DeviceInfoPage : Page
                     GpuTempText.Text = gpuTemp > 0 ? $"{gpuTemp:F0}°C" : "--°C";
                     UpdateTempColor(GpuTempText, gpuTemp);
 
-                    DiskUsageText.Text = diskUsage;
+                    DiskUsageText.Text = string.IsNullOrEmpty(diskUsage) ? "--" : diskUsage;
 
                     if (batteryInfo != null && batteryInfo.HasBattery)
                     {
@@ -231,13 +233,6 @@ public partial class DeviceInfoPage : Page
                             : (batteryInfo.Status == 3 ? "已充满" : $"预计续航 {SystemInfoHelper.FormatMinutes(batteryInfo.EstimatedRunTimeMinutes)}");
                     }
 
-                    if (refreshDiskSensors)
-                    {
-                        // 重新绑定以刷新健康度/温度显示
-                        var src = DiskDrivesList.ItemsSource;
-                        DiskDrivesList.ItemsSource = null;
-                        DiskDrivesList.ItemsSource = src;
-                    }
                 }
                 catch (Exception ex)
                 {

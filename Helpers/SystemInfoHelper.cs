@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
 using System.Linq;
@@ -870,52 +871,93 @@ public static class SystemInfoHelper
         }
     }
 
-    /// <summary>硬盘详情（WMI 型号/容量 + LHM 健康度/温度），WMI 部分只查一次并缓存。</summary>
-    public class DiskDriveDetail
+    /// <summary>硬盘详情（WMI 型号/容量 + LHM 健康度/温度），WMI 部分只查一次并缓存。
+    /// 实现 INotifyPropertyChanged：健康度刷新直接更新属性，不再重绑 ItemsSource。</summary>
+    public class DiskDriveDetail : INotifyPropertyChanged
     {
-        public string Model { get; set; } = "未知";
-        public string Size { get; set; } = "";
-        public ulong SizeBytes { get; set; }
-        public double? HealthPercent { get; set; }
+        private string _model = "未知";
+        private string _size = "";
+        private ulong _sizeBytes;
+        private double? _healthPercent;
+
+        public string Model
+        {
+            get => _model;
+            set { _model = value; OnPropertyChanged(nameof(Model)); }
+        }
+
+        public string Size
+        {
+            get => _size;
+            set { _size = value; OnPropertyChanged(nameof(Size)); }
+        }
+
+        public ulong SizeBytes
+        {
+            get => _sizeBytes;
+            set { _sizeBytes = value; OnPropertyChanged(nameof(SizeBytes)); }
+        }
+
+        public double? HealthPercent
+        {
+            get => _healthPercent;
+            set
+            {
+                _healthPercent = value;
+                OnPropertyChanged(nameof(HealthPercent));
+                OnPropertyChanged(nameof(HealthText));
+            }
+        }
+
         public string HealthText => HealthPercent.HasValue ? $"{HealthPercent.Value:F0}%" : "--";
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected void OnPropertyChanged(string name) =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
     private static List<DiskDriveDetail>? _cachedDiskDrives;
+    private static readonly object _diskDrivesLock = new();
 
     public static List<DiskDriveDetail> GetDiskDrives()
     {
         if (_cachedDiskDrives != null) return _cachedDiskDrives;
-        var result = new List<DiskDriveDetail>();
-        try
+        // 双重检查锁：防多线程同时首次调用建出两份列表
+        lock (_diskDrivesLock)
         {
-            using var searcher = new System.Management.ManagementObjectSearcher(
-                "SELECT Model, Size, MediaType FROM Win32_DiskDrive");
-            foreach (var obj in searcher.Get())
+            if (_cachedDiskDrives != null) return _cachedDiskDrives;
+            var result = new List<DiskDriveDetail>();
+            try
             {
-                var mediaType = obj["MediaType"]?.ToString() ?? "";
-                if (!mediaType.Contains("Fixed") && !mediaType.Contains("SSD") && !string.IsNullOrEmpty(mediaType))
-                    continue;
-                var model = obj["Model"]?.ToString()?.Trim();
-                if (string.IsNullOrEmpty(model)) continue;
-                var size = obj["Size"];
-                ulong sizeBytes = 0;
-                if (size != null && ulong.TryParse(size.ToString(), out var parsed))
-                    sizeBytes = parsed;
-                result.Add(new DiskDriveDetail
+                using var searcher = new System.Management.ManagementObjectSearcher(
+                    "SELECT Model, Size, MediaType FROM Win32_DiskDrive");
+                foreach (var obj in searcher.Get())
                 {
-                    Model = model,
-                    Size = sizeBytes > 0 ? $"{sizeBytes / 1024.0 / 1024.0 / 1024.0:F0} GB" : "",
-                    SizeBytes = sizeBytes
-                });
+                    var mediaType = obj["MediaType"]?.ToString() ?? "";
+                    if (!mediaType.Contains("Fixed") && !mediaType.Contains("SSD") && !string.IsNullOrEmpty(mediaType))
+                        continue;
+                    var model = obj["Model"]?.ToString()?.Trim();
+                    if (string.IsNullOrEmpty(model)) continue;
+                    var size = obj["Size"];
+                    ulong sizeBytes = 0;
+                    if (size != null && ulong.TryParse(size.ToString(), out var parsed))
+                        sizeBytes = parsed;
+                    result.Add(new DiskDriveDetail
+                    {
+                        Model = model,
+                        Size = sizeBytes > 0 ? $"{sizeBytes / 1024.0 / 1024.0 / 1024.0:F0} GB" : "",
+                        SizeBytes = sizeBytes
+                    });
+                }
             }
+            catch (Exception ex)
+            {
+                LogService.Instance.Warning("[SystemInfoHelper.GetDiskDrives] 执行失败", ex);
+            }
+            _cachedDiskDrives = result;
+            UpdateDiskDriveSensors(result);
+            return result;
         }
-        catch (Exception ex)
-        {
-            LogService.Instance.Warning("[SystemInfoHelper.GetDiskDrives] 执行失败", ex);
-        }
-        _cachedDiskDrives = result;
-        UpdateDiskDriveSensors(result);
-        return result;
     }
 
     /// <summary>刷新硬盘健康度（只走 LHM，不查 WMI，可频繁调用）。按名字模糊匹配，匹配不上时按顺序兜底。</summary>

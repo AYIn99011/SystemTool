@@ -23,7 +23,6 @@ public partial class RepairPage : Page
                     FileName = "cmd.exe",
                     Arguments = "/c sfc /scannow && pause",
                     UseShellExecute = true,
-                    Verb = "runas",
                     WindowStyle = ProcessWindowStyle.Normal
                 }
             };
@@ -46,7 +45,6 @@ public partial class RepairPage : Page
                     FileName = "cmd.exe",
                     Arguments = "/c DISM /Online /Cleanup-Image /RestoreHealth && pause",
                     UseShellExecute = true,
-                    Verb = "runas",
                     WindowStyle = ProcessWindowStyle.Normal
                 }
             };
@@ -102,7 +100,6 @@ public partial class RepairPage : Page
                     FileName = "cmd.exe",
                     Arguments = "/c netsh winsock reset & ipconfig /flushdns & netsh int ip reset & echo. & echo 网络修复完成: Winsock/DNS/IP 已重置，系统代理已关闭，部分设置需重启电脑生效 & pause",
                     UseShellExecute = true,
-                    Verb = "runas",
                     WindowStyle = ProcessWindowStyle.Normal
                 }
             };

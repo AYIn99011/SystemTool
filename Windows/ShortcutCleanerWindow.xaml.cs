@@ -65,19 +65,38 @@ namespace SystemTool.Windows
         public ShortcutCleanerWindow()
         {
             InitializeComponent();
-            LoadShortcuts();
             ShortcutsList.ItemsSource = Shortcuts;
-            UpdateStatus();
+            // 每条目 SHGetFileInfo 取图标耗时大，后台加载避免阻塞窗口显示
+            StatusText.Text = "正在加载快捷方式...";
+            _ = System.Threading.Tasks.Task.Run(() =>
+            {
+                var items = ScanShortcutEntries();
+                Dispatcher.Invoke(() =>
+                {
+                    foreach (var item in items) Shortcuts.Add(item);
+                    UpdateStatus();
+                });
+            });
         }
 
         private void LoadShortcuts()
         {
+            StatusText.Text = "正在加载快捷方式...";
             Shortcuts.Clear();
-            ScanRegistryNamespace();
+            _ = System.Threading.Tasks.Task.Run(() =>
+            {
+                var items = ScanShortcutEntries();
+                Dispatcher.Invoke(() =>
+                {
+                    foreach (var item in items) Shortcuts.Add(item);
+                    UpdateStatus();
+                });
+            });
         }
 
-        private void ScanRegistryNamespace()
+        private System.Collections.Generic.List<ShortcutItem> ScanShortcutEntries()
         {
+            var result = new System.Collections.Generic.List<ShortcutItem>();
             var systemItems = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 "本地磁盘", "Local Disk", "硬盘", "CD 驱动器", "DVD 驱动器", "CD-ROM", "DVD-ROM",
@@ -108,7 +127,7 @@ namespace SystemTool.Windows
                                     var name = subKey.GetValue(null) as string;
                                     if (!string.IsNullOrEmpty(name) && !IsSystemItem(name, systemItems, exactSystemItems))
                                     {
-                                        Shortcuts.Add(new ShortcutItem
+                                        result.Add(new ShortcutItem
                                         {
                                             Name = name,
                                             FullPath = $"Registry::{subKeyName}",
@@ -136,7 +155,7 @@ namespace SystemTool.Windows
                                     var name = subKey.GetValue(null) as string;
                                     if (!string.IsNullOrEmpty(name) && !IsSystemItem(name, systemItems, exactSystemItems))
                                     {
-                                        Shortcuts.Add(new ShortcutItem
+                                        result.Add(new ShortcutItem
                                         {
                                             Name = name,
                                             FullPath = $"Registry::{subKeyName}",
@@ -153,8 +172,9 @@ namespace SystemTool.Windows
             }
             catch (Exception ex)
             {
-                LogService.Instance.Warning("[ShortcutCleanerWindow.ScanRegistryNamespace] 执行失败", ex);
+                LogService.Instance.Warning("[ShortcutCleanerWindow.ScanShortcutEntries] 执行失败", ex);
             }
+            return result;
         }
 
         private bool IsSystemItem(string name, HashSet<string> systemItems, HashSet<string> exactSystemItems)
@@ -241,9 +261,16 @@ namespace SystemTool.Windows
                     if (item.FullPath != null && item.FullPath.StartsWith("Registry::"))
                     {
                         var clsid = item.FullPath.Substring("Registry::".Length);
-                        DeleteRegistryEntry(clsid);
-                        deleted++;
-                        Services.LogService.Instance.Info($"已删除此电脑快捷方式: {item.Name}");
+                        if (DeleteRegistryEntry(clsid))
+                        {
+                            deleted++;
+                            Services.LogService.Instance.Info($"已删除此电脑快捷方式: {item.Name}");
+                        }
+                        else
+                        {
+                            failed++;
+                            Services.LogService.Instance.Warning($"删除快捷方式未成功（注册表项不存在或无权限）: {item.Name}");
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -262,18 +289,28 @@ namespace SystemTool.Windows
                 MessageBox.Show($"成功删除 {deleted} 个快捷方式", "删除完成", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        private void DeleteRegistryEntry(string clsid)
+        /// <returns>实际删除了至少一个注册表项返回 true，否则 false</returns>
+        private bool DeleteRegistryEntry(string clsid)
         {
             var paths = new[]
             {
                 $@"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{clsid}",
             };
 
+            bool deleted = false;
             foreach (var path in paths)
             {
                 try
                 {
-                    Microsoft.Win32.Registry.LocalMachine.DeleteSubKey(path, false);
+                    // 项存在才删；不存在（已删或未注册）不算删除成功
+                    using (var existing = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(path))
+                    {
+                        if (existing != null)
+                        {
+                            Microsoft.Win32.Registry.LocalMachine.DeleteSubKey(path, false);
+                            deleted = true;
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -282,13 +319,21 @@ namespace SystemTool.Windows
 
                 try
                 {
-                    Microsoft.Win32.Registry.CurrentUser.DeleteSubKey(path, false);
+                    using (var existing = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(path))
+                    {
+                        if (existing != null)
+                        {
+                            Microsoft.Win32.Registry.CurrentUser.DeleteSubKey(path, false);
+                            deleted = true;
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
                     LogService.Instance.Error("[ShortcutCleanerWindow.DeleteRegistryEntry] 注册表删除失败", ex);
                 }
             }
+            return deleted;
         }
     }
 }

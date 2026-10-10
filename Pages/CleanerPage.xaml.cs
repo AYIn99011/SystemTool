@@ -67,7 +67,7 @@ namespace SystemTool.Pages
             _categories.Add(new CleanCategory("BrowserCache", "浏览器缓存", GetBrowserCacheEstimatePaths, CleanBrowserCacheCoreAsync));
             _categories.Add(new CleanCategory("StoreCache", "应用商店缓存", () => new List<string>(), CleanStoreCacheCoreAsync, hasEstimate: false));
             _categories.Add(new CleanCategory("QQ", "QQ缓存", GetQQCachePaths, CleanQQCacheCoreAsync));
-            _categories.Add(new CleanCategory("WeChat", "微信缓存", GetWeChatCachePaths, CleanWeChatCacheCoreAsync));
+            _categories.Add(new CleanCategory("WeChat", "微信缓存", GetWeChatEstimatePaths, CleanWeChatCacheCoreAsync));
             _categories.Add(new CleanCategory("QQMusic", "QQ音乐缓存", GetQQMusicCachePaths, CleanQQMusicCacheCoreAsync));
             _categories.Add(new CleanCategory("CloudMusic", "网易云音乐缓存", GetCloudMusicCachePaths, CleanCloudMusicCacheCoreAsync));
             _categories.Add(new CleanCategory("KuGou", "酷狗音乐缓存", GetKuGouCachePaths, CleanKuGouCacheCoreAsync));
@@ -336,6 +336,16 @@ namespace SystemTool.Pages
             UpdateRing(Math.Min(est / (20.0 * 1024 * 1024 * 1024), 1.0));
             OneClickButton.Content = _estimateReady ? $"一键清理（{FormatSize(est)}）" : "一键扫描";
             RefreshCategorySizes();
+        }
+
+        /// <summary>
+        /// 单独清理按钮执行完毕后调用：让该分类的预估缓存失效并刷新显示，
+        /// 避免一键清理按钮继续显示清理前的过期预估数字。
+        /// </summary>
+        private void InvalidateEstimate(string categoryKey)
+        {
+            _lastEstimates.TryRemove(categoryKey, out _);
+            UpdateEstimateDisplay();
         }
 
         private async void OneClickButton_Click(object sender, RoutedEventArgs e)
@@ -722,6 +732,7 @@ namespace SystemTool.Pages
             {
                 await CleanStoreCacheCoreAsync();
                 MarkCleaned();
+                InvalidateEstimate("StoreCache");
             }
             finally
             {
@@ -760,6 +771,7 @@ namespace SystemTool.Pages
             {
                 await CleanSystemLogsCoreAsync();
                 MarkCleaned();
+                InvalidateEstimate("SystemLogs");
             }
             finally
             {
@@ -799,13 +811,32 @@ namespace SystemTool.Pages
 
                     // 注：DeleteDirectoryContents 已递归清空 Windows\Logs 下所有子目录（含 CBS/DISM），无需单独处理
                     LogService.Instance.Info("正在清理Windows事件日志...");
-                    using (Process.Start(new ProcessStartInfo
+                    int evtExitCode = -1;
+                    try
                     {
-                        FileName = "cmd.exe",
-                        Arguments = "/c wevtutil el | foreach { wevtutil cl $_ }",
-                        UseShellExecute = true,
-                        WindowStyle = ProcessWindowStyle.Hidden
-                    })) { }
+                        using (var evtProc = Process.Start(new ProcessStartInfo
+                        {
+                            FileName = "powershell.exe",
+                            Arguments = "-NoProfile -Command \"wevtutil el | ForEach-Object { wevtutil cl $_ }\"",
+                            UseShellExecute = true,
+                            WindowStyle = ProcessWindowStyle.Hidden
+                        }))
+                        {
+                            if (evtProc != null)
+                            {
+                                evtProc.WaitForExit(180000);
+                                evtExitCode = evtProc.ExitCode;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogService.Instance.Warning("[CleanerPage.CleanSystemLogsCoreAsync] 启动事件日志清理进程失败", ex);
+                    }
+                    if (evtExitCode != 0)
+                        LogService.Instance.Warning($"[CleanerPage.CleanSystemLogsCoreAsync] 事件日志清理失败，退出码: {evtExitCode}");
+                    else
+                        LogService.Instance.Info("  Windows事件日志: 清理完成");
 
                     return (totalSize, fileCount, dirCount);
                 });
@@ -832,6 +863,7 @@ namespace SystemTool.Pages
             {
                 await CleanSystemCacheCoreAsync();
                 MarkCleaned();
+                InvalidateEstimate("SystemCache");
             }
             finally
             {
@@ -908,8 +940,9 @@ namespace SystemTool.Pages
                             try
                             {
                                 var fileInfo = new FileInfo(file);
-                                thumbSize += fileInfo.Length;
+                                var thumbLen = fileInfo.Length;
                                 File.Delete(file);
+                                thumbSize += thumbLen;
                                 thumbCount++;
                             }
                             catch (Exception ex)
@@ -947,6 +980,7 @@ namespace SystemTool.Pages
             {
                 await CleanBrowserCacheCoreAsync();
                 MarkCleaned();
+                InvalidateEstimate("BrowserCache");
             }
             finally
             {
@@ -1022,6 +1056,7 @@ namespace SystemTool.Pages
             {
                 await CleanQQMusicCacheCoreAsync();
                 MarkCleaned();
+                InvalidateEstimate("QQMusic");
             }
             finally
             {
@@ -1071,6 +1106,7 @@ namespace SystemTool.Pages
             {
                 await CleanCloudMusicCacheCoreAsync();
                 MarkCleaned();
+                InvalidateEstimate("CloudMusic");
             }
             finally
             {
@@ -1120,6 +1156,7 @@ namespace SystemTool.Pages
             {
                 await CleanDouyinCacheCoreAsync();
                 MarkCleaned();
+                InvalidateEstimate("Douyin");
             }
             finally
             {
@@ -1169,6 +1206,7 @@ namespace SystemTool.Pages
             {
                 await CleanKuGouCacheCoreAsync();
                 MarkCleaned();
+                InvalidateEstimate("KuGou");
             }
             finally
             {
@@ -1218,6 +1256,7 @@ namespace SystemTool.Pages
             {
                 await CleanWeChatCacheCoreAsync();
                 MarkCleaned();
+                InvalidateEstimate("WeChat");
             }
             finally
             {
@@ -1281,6 +1320,7 @@ namespace SystemTool.Pages
             {
                 await CleanQQCacheCoreAsync();
                 MarkCleaned();
+                InvalidateEstimate("QQ");
             }
             finally
             {
@@ -1299,7 +1339,7 @@ namespace SystemTool.Pages
                 var result = await Task.Run(() =>
                 {
                     LogService.Instance.Info("正在关闭QQ相关进程...");
-                    KillProcesses(new[] { "QQ", "TIM", "QQMusic", "QQBrowser" });
+                    KillProcesses(new[] { "QQ", "TIM" });
                     Thread.Sleep(2000);
 
                     long totalSize = 0;
@@ -1313,7 +1353,8 @@ namespace SystemTool.Pages
                     {
                         if (Directory.Exists(cachePath))
                         {
-                            var cleanResult = CleanQQCacheDirectory(cachePath);
+                            // 带保护名单的递归清理：媒体/文档文件夹与扩展名一律保留
+                            var cleanResult = CleanQQCacheDirectoryRecursive(cachePath, QqProtectedFolders, QqProtectedExtensions);
                             totalSize += cleanResult.Size;
                             totalFiles += cleanResult.FileCount;
                             totalDirs += cleanResult.DirCount;
@@ -1561,30 +1602,31 @@ namespace SystemTool.Pages
             return null;
         }
 
+        /// <summary>QQ 缓存清理保护名单：媒体/文档文件夹与扩展名一律不删。</summary>
+        private static readonly HashSet<string> QqProtectedFolders = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Image", "Images", "图片",
+            "Video", "Videos", "视频",
+            "Voice", "Audio", "语音",
+            "Pic", "Photo", "Photos",
+            "ShortVideo", "MicroMsg", "MsgAttach",
+            "FileRecv", "Filerecv", "Received Files"
+        };
+
+        private static readonly HashSet<string> QqProtectedExtensions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp",
+            ".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv",
+            ".mp3", ".wav", ".aac", ".flac", ".wma", ".amr", ".m4a", ".ogg",
+            ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".pdf",
+            ".zip", ".rar", ".7z", ".tar", ".gz"
+        };
+
         private (long Size, int FileCount, int DirCount) CleanQQCacheDirectory(string path)
         {
             long totalSize = 0;
             int totalFiles = 0;
             int totalDirs = 0;
-
-            var protectedFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-                "Image", "Images", "图片",
-                "Video", "Videos", "视频",
-                "Voice", "Audio", "语音",
-                "Pic", "Photo", "Photos",
-                "ShortVideo", "MicroMsg", "MsgAttach",
-                "FileRecv", "Filerecv", "Received Files"
-            };
-
-            var protectedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-                ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp",
-                ".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv",
-                ".mp3", ".wav", ".aac", ".flac", ".wma", ".amr", ".m4a", ".ogg",
-                ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".pdf",
-                ".zip", ".rar", ".7z", ".tar", ".gz"
-            };
 
             try
             {
@@ -1593,35 +1635,11 @@ namespace SystemTool.Pages
                     return (0, 0, 0);
                 }
 
-                var dirInfo = new DirectoryInfo(path);
                 LogService.Instance.Info($"清理目录: {path}");
-
-                foreach (var file in dirInfo.EnumerateFiles("*", SearchOption.AllDirectories))
-                {
-                    try
-                    {
-                        totalSize += file.Length;
-                        file.Delete();
-                        totalFiles++;
-                    }
-                    catch (Exception ex)
-                    {
-                        LogService.Instance.Warning("[CleanerPage.未知方法] 执行失败", ex);
-                    }
-                }
-
-                foreach (var dir in dirInfo.EnumerateDirectories("*", SearchOption.AllDirectories))
-                {
-                    try
-                    {
-                        dir.Delete(true);
-                        totalDirs++;
-                    }
-                    catch (Exception ex)
-                    {
-                        LogService.Instance.Warning("[CleanerPage.未知方法] 执行失败", ex);
-                    }
-                }
+                var result = ClearDirectoryTree(path, "CleanerPage.CleanQQCacheDirectory");
+                totalSize = result.Size;
+                totalFiles = result.FileCount;
+                totalDirs = result.DirCount;
 
                 if (totalFiles > 0 || totalDirs > 0)
                 {
@@ -1683,8 +1701,9 @@ namespace SystemTool.Pages
 
                     try
                     {
-                        totalSize += file.Length;
+                        var fileLen = file.Length;
                         file.Delete();
+                        totalSize += fileLen;
                         totalFiles++;
                     }
                     catch (Exception ex)
@@ -1722,8 +1741,9 @@ namespace SystemTool.Pages
                         try
                         {
                             var fileInfo = new FileInfo(file);
-                            totalSize += fileInfo.Length;
+                            var xlogLen = fileInfo.Length;
                             File.Delete(file);
+                            totalSize += xlogLen;
                             fileCount++;
                         }
                         catch (Exception ex)
@@ -1746,12 +1766,26 @@ namespace SystemTool.Pages
             return (totalSize, fileCount);
         }
 
+        /// <summary>
+        /// 微信预估路径 = 清理路径 + xlog 日志目录。
+        /// 清理时 CleanWeChatXlogFiles 会删除 xwechat\log 下的 *.xlog，预估加上该目录以与实际清理范围一致。
+        /// </summary>
+        private List<string> GetWeChatEstimatePaths()
+        {
+            var paths = GetWeChatCachePaths();
+            var xlogDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "Tencent", "xwechat", "log");
+            if (Directory.Exists(xlogDir) && !paths.Contains(xlogDir, StringComparer.OrdinalIgnoreCase))
+                paths.Add(xlogDir);
+            return paths;
+        }
+
         private List<string> GetWeChatCachePaths()
         {
             var paths = new List<string>();
             var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 
             // 默认位置 + 各盘符根目录自适应（微信支持更改文件存储位置，如 D:\WeChat Files）
             var roots = new List<string>
@@ -1807,11 +1841,7 @@ namespace SystemTool.Pages
                 ScanWeChatAccountDir(accountDir, paths);
             }
 
-            var xwechatLogPath = Path.Combine(appData, "Tencent", "xwechat", "log");
-            if (Directory.Exists(xwechatLogPath))
-            {
-                paths.Add(xwechatLogPath);
-            }
+            // 注：xwechat\log 整目录不再整体清理，日志只走 CleanWeChatXlogFiles 按 *.xlog 逐个删除
 
             var xpluginPath = Path.Combine(localAppData, "Tencent", "WeChat", "XPlugin");
             if (Directory.Exists(xpluginPath))
@@ -1923,8 +1953,6 @@ namespace SystemTool.Pages
                 Path.Combine(appData, "Tencent", "QQMusic", "QQMusicCache"),
                 Path.Combine(localAppData, "Tencent", "QQMusic", "Cache"),
                 Path.Combine(localAppData, "Tencent", "QQMusic", "Temp"),
-                Path.Combine(userProfile, "Music", "QQMusic", "Cache"),
-                Path.Combine(userProfile, "Music", "QQMusic", "Temp"),
                 Path.Combine(userProfile, "Documents", "Tencent", "QQMusic", "Cache"),
             };
 
@@ -1945,12 +1973,16 @@ namespace SystemTool.Pages
 
             if (!string.IsNullOrEmpty(installPath))
             {
+                // 防御：.. 规范化后必须仍在安装盘符内（盘符相同），否则跳过该路径
+                string installDriveRoot;
+                try { installDriveRoot = Path.GetPathRoot(Path.GetFullPath(installPath)) ?? string.Empty; }
+                catch { installDriveRoot = string.Empty; }
+
                 var regPaths = new[]
                 {
                     Path.Combine(installPath, "Cache"),
                     Path.Combine(installPath, "QQMusicCache"),
                     Path.Combine(installPath, "Temp"),
-                    Path.Combine(installPath, "Download"),
                     Path.Combine(installPath, "..", "UserData", "Cache"),
                     Path.Combine(installPath, "..", "UserData", "Temp")
                 };
@@ -1960,6 +1992,11 @@ namespace SystemTool.Pages
                     try
                     {
                         var fullPath = Path.GetFullPath(regPath);
+                        if (!string.Equals(Path.GetPathRoot(fullPath), installDriveRoot, StringComparison.OrdinalIgnoreCase))
+                        {
+                            LogService.Instance.Warning($"[CleanerPage.GetQQMusicCachePaths] 跳过安装盘符外的路径: {fullPath}");
+                            continue;
+                        }
                         if (Directory.Exists(fullPath) && !paths.Contains(fullPath, StringComparer.OrdinalIgnoreCase))
                         {
                             paths.Add(fullPath);
@@ -1981,13 +2018,19 @@ namespace SystemTool.Pages
                 }
             }
 
+            // 配置文件里的自定义缓存根目录：只清理其下 6 个具名缓存子目录，不清空整个根目录
             var configCachePath = GetQQMusicConfigCachePath();
-            if (!string.IsNullOrEmpty(configCachePath) && Directory.Exists(configCachePath) && !paths.Contains(configCachePath, StringComparer.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(configCachePath) && Directory.Exists(configCachePath))
             {
-                paths.Add(configCachePath);
+                foreach (var sub in new[] { "Log", "WebkitCache", "QQMusicPicture", "QQMusicLyricNew", "Temp", "downloadproxyNew" })
+                {
+                    var subPath = Path.Combine(configCachePath, sub);
+                    if (Directory.Exists(subPath) && !paths.Contains(subPath, StringComparer.OrdinalIgnoreCase))
+                        paths.Add(subPath);
+                }
             }
 
-            var allDrivePaths = ScanAllDrivesForMusicAppCache("QQMusic", new[] { "Cache", "Temp", "QQMusicCache", "Download", "LocalCache" });
+            var allDrivePaths = ScanAllDrivesForMusicAppCache("QQMusic", new[] { "Cache", "Temp", "QQMusicCache", "LocalCache" });
             foreach (var drivePath in allDrivePaths)
             {
                 if (!paths.Contains(drivePath, StringComparer.OrdinalIgnoreCase))
@@ -2007,6 +2050,7 @@ namespace SystemTool.Pages
 
             // 自适应：QQ音乐自定义缓存根目录（如 D:\QQMusicCache）
             // 实测该目录下的可安全删除子文件夹；扫盘通用方法只认 Cache/Temp 等名字会漏掉它们
+            // 只清理 6 个具名缓存子目录，不清空整个根目录（用户可能把下载目录也设在这里）
             foreach (var drive in DriveInfo.GetDrives())
             {
                 try
@@ -2123,8 +2167,7 @@ namespace SystemTool.Pages
                     Path.Combine(installPath, "CloudMusic", "cache"),
                     Path.Combine(installPath, "CloudMusic", "Cache"),
                     Path.Combine(installPath, "cache"),
-                    Path.Combine(installPath, "temp"),
-                    Path.Combine(installPath, "download")
+                    Path.Combine(installPath, "temp")
                 };
 
                 foreach (var regPath in regPaths)
@@ -2159,7 +2202,7 @@ namespace SystemTool.Pages
                 paths.Add(configCachePath);
             }
 
-            var allDrivePaths = ScanAllDrivesForMusicAppCache("CloudMusic", new[] { "cache", "Cache", "temp", "Temp", "download" });
+            var allDrivePaths = ScanAllDrivesForMusicAppCache("CloudMusic", new[] { "cache", "Cache", "temp", "Temp" });
             foreach (var drivePath in allDrivePaths)
             {
                 if (!paths.Contains(drivePath, StringComparer.OrdinalIgnoreCase))
@@ -2306,9 +2349,7 @@ namespace SystemTool.Pages
                     Path.Combine(installPath, "KuGou", "Temp"),
                     Path.Combine(installPath, "KuGou", "Cache"),
                     Path.Combine(installPath, "Temp"),
-                    Path.Combine(installPath, "Cache"),
-                    Path.Combine(installPath, "Download"),
-                    Path.Combine(installPath, "Lyric")
+                    Path.Combine(installPath, "Cache")
                 };
 
                 foreach (var regPath in regPaths)
@@ -2343,7 +2384,7 @@ namespace SystemTool.Pages
                 paths.Add(configCachePath);
             }
 
-            var allDrivePaths = ScanAllDrivesForMusicAppCache("KuGou", new[] { "Temp", "Cache", "KuGouTemp", "Download", "Lyric" });
+            var allDrivePaths = ScanAllDrivesForMusicAppCache("KuGou", new[] { "Temp", "Cache", "KuGouTemp" });
             foreach (var drivePath in allDrivePaths)
             {
                 if (!paths.Contains(drivePath, StringComparer.OrdinalIgnoreCase))
@@ -2419,6 +2460,12 @@ namespace SystemTool.Pages
         {
             try
             {
+                // subKey 自带 SOFTWARE\ 前缀，Wow6432Node 分支先剥掉前缀再拼，避免双前缀打不开
+                var stripped = subKey.StartsWith(@"Software\", StringComparison.OrdinalIgnoreCase)
+                    ? subKey.Substring(@"Software\".Length)
+                    : subKey;
+                var wowSubKey = @"SOFTWARE\Wow6432Node\" + stripped;
+
                 using (var key = Registry.LocalMachine.OpenSubKey(subKey))
                 {
                     if (key != null)
@@ -2429,7 +2476,7 @@ namespace SystemTool.Pages
                     }
                 }
 
-                using (var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Wow6432Node\" + subKey))
+                using (var key = Registry.LocalMachine.OpenSubKey(wowSubKey))
                 {
                     if (key != null)
                     {
@@ -2449,7 +2496,7 @@ namespace SystemTool.Pages
                     }
                 }
 
-                using (var key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Wow6432Node\" + subKey))
+                using (var key = Registry.CurrentUser.OpenSubKey(wowSubKey))
                 {
                     if (key != null)
                     {
@@ -2492,7 +2539,7 @@ namespace SystemTool.Pages
                 foreach (var packageDir in Directory.GetDirectories(packagesPath))
                 {
                     var dirName = Path.GetFileName(packageDir);
-                    if (dirName.IndexOf(packageNamePattern, StringComparison.OrdinalIgnoreCase) >= 0)
+                    if (dirName.StartsWith(packageNamePattern, StringComparison.OrdinalIgnoreCase))
                     {
                         foreach (var cacheFolder in cacheFolderNames)
                         {
@@ -2507,12 +2554,13 @@ namespace SystemTool.Pages
                             {
                                 paths.Add(localStatePath);
                             }
+                        }
 
-                            var tempStatePath = Path.Combine(packageDir, "TempState");
-                            if (Directory.Exists(tempStatePath))
-                            {
-                                paths.Add(tempStatePath);
-                            }
+                        // TempState 与 cacheFolder 无关：提到循环外，避免每个 cacheFolder 重复添加一次
+                        var tempStatePath = Path.Combine(packageDir, "TempState");
+                        if (Directory.Exists(tempStatePath))
+                        {
+                            paths.Add(tempStatePath);
                         }
                     }
                 }
@@ -2589,6 +2637,15 @@ namespace SystemTool.Pages
             var paths = new List<string>();
             var skippedDirs = new SkippedDirs(); // 无权限目录，扫描结束统一汇总
 
+            // 用户媒体库（音乐/视频/图片）不参与音乐应用缓存扫描：用户下载的歌曲等个人文件在此，绝不动
+            var excludedRoots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var sf in new[] { Environment.SpecialFolder.MyMusic, Environment.SpecialFolder.MyVideos, Environment.SpecialFolder.MyPictures })
+            {
+                var mediaPath = Environment.GetFolderPath(sf);
+                if (!string.IsNullOrEmpty(mediaPath))
+                    excludedRoots.Add(mediaPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            }
+
             try
             {
                 var drives = DriveInfo.GetDrives()
@@ -2600,6 +2657,7 @@ namespace SystemTool.Pages
                 {
                     try
                     {
+                        excludedRoots.Add(Path.Combine(drive.RootDirectory.FullName, "Music"));
                         var searchPaths = new[]
                         {
                             drive.RootDirectory.FullName,
@@ -2617,7 +2675,7 @@ namespace SystemTool.Pages
 
                             try
                             {
-                                ScanDirectoryForAppCache(searchPath, appNamePattern, cacheFolderNames, paths, 0, 3, skippedDirs);
+                                ScanDirectoryForAppCache(searchPath, appNamePattern, cacheFolderNames, paths, 0, 3, skippedDirs, excludedRoots);
                             }
                             catch { skippedDirs.Add(searchPath); }
                         }
@@ -2633,7 +2691,7 @@ namespace SystemTool.Pages
             return paths;
         }
 
-        private void ScanDirectoryForAppCache(string directory, string appNamePattern, string[] cacheFolderNames, List<string> foundPaths, int currentDepth, int maxDepth, SkippedDirs skippedDirs)
+        private void ScanDirectoryForAppCache(string directory, string appNamePattern, string[] cacheFolderNames, List<string> foundPaths, int currentDepth, int maxDepth, SkippedDirs skippedDirs, HashSet<string> excludedRoots)
         {
             if (currentDepth > maxDepth)
                 return;
@@ -2647,9 +2705,12 @@ namespace SystemTool.Pages
                         // 跳过软链接（junction/symlink）：它们多为指向已覆盖目录的兼容性别名
                         if (new DirectoryInfo(dir).Attributes.HasFlag(FileAttributes.ReparsePoint))
                             continue;
+                        // 跳过用户媒体库：个人音乐/视频/图片目录不参与扫描
+                        if (excludedRoots.Contains(dir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)))
+                            continue;
                         var dirName = Path.GetFileName(dir);
 
-                        if (dirName.IndexOf(appNamePattern, StringComparison.OrdinalIgnoreCase) >= 0)
+                        if (dirName.Equals(appNamePattern, StringComparison.OrdinalIgnoreCase))
                         {
                             foreach (var cacheFolder in cacheFolderNames)
                             {
@@ -2679,7 +2740,7 @@ namespace SystemTool.Pages
 
                         if (currentDepth < maxDepth)
                         {
-                            ScanDirectoryForAppCache(dir, appNamePattern, cacheFolderNames, foundPaths, currentDepth + 1, maxDepth, skippedDirs);
+                            ScanDirectoryForAppCache(dir, appNamePattern, cacheFolderNames, foundPaths, currentDepth + 1, maxDepth, skippedDirs, excludedRoots);
                         }
                     }
                     catch { skippedDirs.Add(dir); }
@@ -2731,57 +2792,6 @@ namespace SystemTool.Pages
             }
         }
 
-        private (long Size, int FileCount, int DirCount) CleanCachePaths(List<string> paths, string appName)
-        {
-            long totalSize = 0;
-            int totalFiles = 0;
-            int totalDirs = 0;
-
-            foreach (var path in paths)
-            {
-                if (Directory.Exists(path))
-                {
-                    try
-                    {
-                        var dirInfo = new DirectoryInfo(path);
-
-                        foreach (var file in dirInfo.EnumerateFiles("*", SearchOption.AllDirectories))
-                        {
-                            try
-                            {
-                                totalSize += file.Length;
-                                file.Delete();
-                                totalFiles++;
-                            }
-                            catch (Exception ex)
-                            {
-                                LogService.Instance.Warning("[CleanerPage.CleanCachePaths] 删除失败", ex);
-                            }
-                        }
-
-                        foreach (var dir in dirInfo.EnumerateDirectories("*", SearchOption.AllDirectories))
-                        {
-                            try
-                            {
-                                dir.Delete(true);
-                                totalDirs++;
-                            }
-                            catch (Exception ex)
-                            {
-                                LogService.Instance.Warning("[CleanerPage.CleanCachePaths] 删除失败", ex);
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        LogService.Instance.Warning("[CleanerPage.CleanCachePaths] 删除失败", ex);
-                    }
-                }
-            }
-
-            return (totalSize, totalFiles, totalDirs);
-        }
-
         private (long Size, int FileCount, int DirCount) CleanCachePathsDetailed(List<string> paths, string appName)
         {
             long totalSize = 0;
@@ -2794,54 +2804,98 @@ namespace SystemTool.Pages
                 {
                     try
                     {
-                        var dirInfo = new DirectoryInfo(path);
-                        long pathSize = 0;
-                        int pathFiles = 0;
-                        int pathDirs = 0;
-
-                        foreach (var file in dirInfo.EnumerateFiles("*", SearchOption.AllDirectories))
+                        var result = ClearDirectoryTree(path, "CleanerPage.CleanCachePathsDetailed");
+                        if (result.FileCount > 0 || result.DirCount > 0)
                         {
-                            try
-                            {
-                                pathSize += file.Length;
-                                file.Delete();
-                                pathFiles++;
-                            }
-                            catch (Exception ex)
-                            {
-                                LogService.Instance.Warning("[CleanerPage.未知方法] 执行失败", ex);
-                            }
-                        }
-
-                        foreach (var dir in dirInfo.EnumerateDirectories("*", SearchOption.AllDirectories))
-                        {
-                            try
-                            {
-                                dir.Delete(true);
-                                pathDirs++;
-                            }
-                            catch (Exception ex)
-                            {
-                                LogService.Instance.Warning("[CleanerPage.未知方法] 执行失败", ex);
-                            }
-                        }
-
-                        if (pathFiles > 0 || pathDirs > 0)
-                        {
-                            totalSize += pathSize;
-                            totalFiles += pathFiles;
-                            totalDirs += pathDirs;
-                            LogService.Instance.Info($"  {path}: 删除 {pathFiles} 个文件, {pathDirs} 个文件夹, 释放 {FormatSize(pathSize)}");
+                            totalSize += result.Size;
+                            totalFiles += result.FileCount;
+                            totalDirs += result.DirCount;
+                            LogService.Instance.Info($"  {path}: 删除 {result.FileCount} 个文件, {result.DirCount} 个文件夹, 释放 {FormatSize(result.Size)}");
                         }
                     }
                     catch (Exception ex)
                     {
-                        LogService.Instance.Warning("[CleanerPage.未知方法] 执行失败", ex);
+                        LogService.Instance.Warning("[CleanerPage.CleanCachePathsDetailed] 删除失败", ex);
                     }
                 }
             }
 
             return (totalSize, totalFiles, totalDirs);
+        }
+
+        /// <summary>
+        /// 栈式清空目录内容（保留根目录本身）：先逐目录删除文件，再自底向上删除已清空的子目录。
+        /// 每个目录独立 try/catch（参考 CleanService.GetDirectorySize 的手工栈式写法），
+        /// 单个无权限子目录只记 warning，不中止整条路径的删除；删除失败的文件不计入已释放空间。
+        /// </summary>
+        private (long Size, int FileCount, int DirCount) ClearDirectoryTree(string path, string logTag)
+        {
+            long size = 0;
+            int fileCount = 0;
+            int dirCount = 0;
+
+            if (!Directory.Exists(path))
+                return (0, 0, 0);
+
+            // 阶段一：栈式遍历，逐目录删除文件
+            var allDirs = new List<string>();
+            var stack = new Stack<string>();
+            stack.Push(path);
+            while (stack.Count > 0)
+            {
+                var dir = stack.Pop();
+                allDirs.Add(dir);
+
+                string[] files;
+                string[] subDirs;
+                try
+                {
+                    files = Directory.GetFiles(dir);
+                    subDirs = Directory.GetDirectories(dir);
+                }
+                catch (Exception ex)
+                {
+                    LogService.Instance.Warning($"[{logTag}] 跳过无权限目录: {dir}", ex);
+                    continue;
+                }
+
+                foreach (var file in files)
+                {
+                    try
+                    {
+                        var len = new FileInfo(file).Length;
+                        File.Delete(file);
+                        size += len;
+                        fileCount++;
+                    }
+                    catch (Exception ex)
+                    {
+                        LogService.Instance.Warning($"[{logTag}] 删除文件失败: {file}", ex);
+                    }
+                }
+
+                foreach (var sub in subDirs)
+                    stack.Push(sub);
+            }
+
+            // 阶段二：自底向上删除已清空的子目录（保留根目录本身；非空目录删除失败则跳过）
+            for (int i = allDirs.Count - 1; i >= 0; i--)
+            {
+                var dir = allDirs[i];
+                if (dir.Equals(path, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                try
+                {
+                    Directory.Delete(dir);
+                    dirCount++;
+                }
+                catch (Exception ex)
+                {
+                    LogService.Instance.Warning($"[{logTag}] 删除目录失败: {dir}", ex);
+                }
+            }
+
+            return (size, fileCount, dirCount);
         }
 
         private async Task ExecuteAsync(string operationName, Func<Task> action)
@@ -2872,47 +2926,17 @@ namespace SystemTool.Pages
 
         private (long Size, int Count, int DirCount) DeleteDirectoryContents(string path)
         {
-            long size = 0;
-            int fileCount = 0;
-            int dirCount = 0;
-
             try
             {
-                var dirInfo = new DirectoryInfo(path);
-
-                Parallel.ForEach(dirInfo.EnumerateFiles("*", SearchOption.AllDirectories), file =>
-                {
-                    try
-                    {
-                        Interlocked.Add(ref size, file.Length);
-                        file.Delete();
-                        Interlocked.Increment(ref fileCount);
-                    }
-                    catch (Exception ex)
-                    {
-                        LogService.Instance.Warning("[CleanerPage.DeleteDirectoryContents] 删除失败", ex);
-                    }
-                });
-
-                foreach (var dir in dirInfo.EnumerateDirectories("*", SearchOption.AllDirectories))
-                {
-                    try
-                    {
-                        dir.Delete(true);
-                        dirCount++;
-                    }
-                    catch (Exception ex)
-                    {
-                        LogService.Instance.Warning("[CleanerPage.DeleteDirectoryContents] 删除失败", ex);
-                    }
-                }
+                // 栈式遍历：每个目录独立 try/catch，单个无权限子目录只记 warning，不中止整条路径
+                var result = ClearDirectoryTree(path, "CleanerPage.DeleteDirectoryContents");
+                return (result.Size, result.FileCount, result.DirCount);
             }
             catch (Exception ex)
             {
                 LogService.Instance.Warning("[CleanerPage.DeleteDirectoryContents] 删除失败", ex);
+                return (0, 0, 0);
             }
-
-            return (size, fileCount, dirCount);
         }
 
         private string FormatSize(long bytes)

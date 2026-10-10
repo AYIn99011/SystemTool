@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using Microsoft.Win32;
 
 namespace SystemTool.Services;
 
@@ -26,18 +27,43 @@ public static class PawnIoDriverService
 
     private const string InstallerFileName = "PawnIO_setup_2.2.0.exe";
     private const string DeclineFlagFileName = "pawnio_prompt_declined.txt";
+    private const string InstallMutexName = "SystemTool_PawnIO_Install";
+    private const int InstallTimeoutExitCode = -2;
+    private const string DriverUninstallRegistryKey =
+        @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\PawnIO";
+    private static readonly Version MinimumDriverVersion = new(2, 2, 0);
 
     private static readonly HttpClient HttpClient = new() { Timeout = TimeSpan.FromMinutes(5) };
 
     private static string AppDataDir =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SystemTool");
 
-    /// <summary>驱动是否已安装（读注册表 Uninstall\PawnIO）。</summary>
+    /// <summary>驱动是否已安装（读注册表 Uninstall\PawnIO，且 DisplayVersion &gt;= 2.2.0）。</summary>
     public static bool IsDriverInstalled
     {
         get
         {
-            try { return LibreHardwareMonitor.PawnIo.PawnIo.IsInstalled; }
+            try
+            {
+                if (!LibreHardwareMonitor.PawnIo.PawnIo.IsInstalled) return false;
+                string? displayVersion = ReadDriverDisplayVersion();
+                if (string.IsNullOrWhiteSpace(displayVersion))
+                {
+                    LogService.Instance.Warning("[PawnIoDriverService] 未读到驱动 DisplayVersion，视为未安装");
+                    return false;
+                }
+                if (!Version.TryParse(displayVersion.Trim(), out var version))
+                {
+                    LogService.Instance.Warning($"[PawnIoDriverService] 驱动版本解析失败（{displayVersion}），视为未安装");
+                    return false;
+                }
+                if (version < MinimumDriverVersion)
+                {
+                    LogService.Instance.Warning($"[PawnIoDriverService] 驱动版本过低（{version}），要求 >= 2.2.0，视为未安装");
+                    return false;
+                }
+                return true;
+            }
             catch (Exception ex)
             {
                 LogService.Instance.Warning("[PawnIoDriverService] 检测驱动安装状态失败", ex);
@@ -46,11 +72,35 @@ public static class PawnIoDriverService
         }
     }
 
+    /// <summary>从注册表读取驱动的 DisplayVersion，读不到返回 null。</summary>
+    private static string? ReadDriverDisplayVersion()
+    {
+        foreach (var view in new[] { RegistryView.Registry64, RegistryView.Registry32 })
+        {
+            try
+            {
+                using var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, view);
+                using var key = baseKey.OpenSubKey(DriverUninstallRegistryKey);
+                var value = key?.GetValue("DisplayVersion") as string;
+                if (!string.IsNullOrWhiteSpace(value)) return value;
+            }
+            catch (Exception ex)
+            {
+                LogService.Instance.Warning("[PawnIoDriverService] 读取驱动版本注册表失败", ex);
+            }
+        }
+        return null;
+    }
+
     /// <summary>用户是否选择了"不再提醒"。</summary>
     public static bool IsPromptDeclined()
     {
         try { return File.Exists(Path.Combine(AppDataDir, DeclineFlagFileName)); }
-        catch { return false; }
+        catch (Exception ex)
+        {
+            LogService.Instance.Warning("[PawnIoDriverService] 读取不再提醒标记失败", ex);
+            return false;
+        }
     }
 
     public static void SetPromptDeclined()
@@ -67,6 +117,20 @@ public static class PawnIoDriverService
         }
     }
 
+    /// <summary>清除"不再提醒"标记（安装成功后调用，驱动日后被卸载时下次启动可重新提示）。</summary>
+    public static void ClearPromptDeclined()
+    {
+        try
+        {
+            string path = Path.Combine(AppDataDir, DeclineFlagFileName);
+            if (File.Exists(path)) File.Delete(path);
+        }
+        catch (Exception ex)
+        {
+            LogService.Instance.Warning("[PawnIoDriverService] 清除不再提醒标记失败", ex);
+        }
+    }
+
     public enum InstallResult
     {
         Success,
@@ -80,6 +144,24 @@ public static class PawnIoDriverService
     public static async Task<(InstallResult Result, string Message)> InstallAsync(
         IProgress<string>? progress = null, CancellationToken cancellationToken = default)
     {
+        // 命名 Mutex：防止双开并发安装；拿不到锁直接返回
+        using var installMutex = new Mutex(initiallyOwned: false, name: InstallMutexName);
+        bool lockTaken;
+        try
+        {
+            lockTaken = installMutex.WaitOne(TimeSpan.Zero);
+        }
+        catch (AbandonedMutexException)
+        {
+            lockTaken = true;
+        }
+        if (!lockTaken)
+        {
+            const string busyMsg = "已有 PawnIO 驱动安装任务在进行，本次安装请求已跳过。";
+            LogService.Instance.Warning("[PawnIoDriverService] " + busyMsg);
+            return (InstallResult.Failed, busyMsg);
+        }
+
         try
         {
             Directory.CreateDirectory(AppDataDir);
@@ -118,15 +200,31 @@ public static class PawnIoDriverService
             bool installedNow = IsDriverInstalled;
             if (exitCode is 0 or 183)
             {
+                TryDeleteInstaller(installerPath);
                 if (installedNow)
+                {
+                    // 安装成功：删掉"不再提醒"标记，驱动日后被卸载后下次启动可重新提示
+                    ClearPromptDeclined();
                     return (InstallResult.Success, "PawnIO 驱动安装成功，CPU 温度已可用。");
+                }
                 // 退出码正常但注册表还没读到：多半需要重启完成驱动注册
+                ClearPromptDeclined();
                 return (InstallResult.SuccessRebootRequired, "驱动已安装，需要重启电脑后生效。");
             }
             if (exitCode == 3010)
+            {
+                TryDeleteInstaller(installerPath);
+                if (!installedNow)
+                    // 仅 3010 且注册表尚未读到驱动：保留标记，避免重启前反复弹窗
+                    SetPromptDeclined();
+                else
+                    ClearPromptDeclined();
                 return (InstallResult.SuccessRebootRequired, "驱动已安装，需要重启电脑后生效。");
+            }
 
-            string failMsg = $"安装失败，退出码 {exitCode}。可前往 https://github.com/namazso/PawnIO.Setup/releases 手动安装。";
+            string failMsg = exitCode == InstallTimeoutExitCode
+                ? "安装超时（10 分钟），请检查后重试，或前往 https://github.com/namazso/PawnIO.Setup/releases 手动安装。"
+                : $"安装失败，退出码 {exitCode}。可前往 https://github.com/namazso/PawnIO.Setup/releases 手动安装。";
             LogService.Instance.Warning("[PawnIoDriverService] " + failMsg);
             return (InstallResult.Failed, failMsg);
         }
@@ -138,6 +236,10 @@ public static class PawnIoDriverService
         {
             LogService.Instance.Warning("[PawnIoDriverService] 安装过程异常", ex);
             return (InstallResult.Failed, $"安装过程出错：{ex.Message}");
+        }
+        finally
+        {
+            try { installMutex.ReleaseMutex(); } catch { }
         }
     }
 
@@ -208,6 +310,23 @@ public static class PawnIoDriverService
         return installerPath;
     }
 
+    /// <summary>安装成功后删除安装包残留文件；删除失败只记日志，不影响安装结果。</summary>
+    private static void TryDeleteInstaller(string installerPath)
+    {
+        try
+        {
+            if (File.Exists(installerPath))
+            {
+                File.Delete(installerPath);
+                LogService.Instance.Info("[PawnIoDriverService] 已删除安装包残留文件");
+            }
+        }
+        catch (Exception ex)
+        {
+            LogService.Instance.Warning("[PawnIoDriverService] 删除安装包残留文件失败", ex);
+        }
+    }
+
     private static bool CheckSha256(string path)
     {
         try
@@ -216,7 +335,11 @@ public static class PawnIoDriverService
             string actual = Convert.ToHexString(SHA256.HashData(stream));
             return string.Equals(actual, ExpectedSha256, StringComparison.OrdinalIgnoreCase);
         }
-        catch { return false; }
+        catch (Exception ex)
+        {
+            LogService.Instance.Warning($"[PawnIoDriverService] 校验安装包哈希失败（{path}）", ex);
+            return false;
+        }
     }
 
     private static bool CheckSignerThumbprint(string path)
@@ -243,7 +366,20 @@ public static class PawnIoDriverService
             CreateNoWindow = true,
         });
         if (process == null) return -1;
-        await process.WaitForExitAsync(cancellationToken);
-        return process.ExitCode;
+        // 10 分钟超时：超时按安装失败处理（调用方通过 InstallTimeoutExitCode 识别）
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(TimeSpan.FromMinutes(10));
+        try
+        {
+            await process.WaitForExitAsync(timeoutCts.Token);
+            return process.ExitCode;
+        }
+        catch (OperationCanceledException)
+        {
+            if (cancellationToken.IsCancellationRequested) throw; // 调用方取消，透传
+            LogService.Instance.Warning("[PawnIoDriverService] 静默安装超时（10 分钟），按安装失败处理");
+            try { if (!process.HasExited) process.Kill(); } catch { }
+            return InstallTimeoutExitCode;
+        }
     }
 }

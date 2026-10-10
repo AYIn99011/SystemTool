@@ -339,8 +339,15 @@ public partial class OptimizerPage : Page
                 CreateNoWindow = true
             });
             process?.WaitForExit(10000);
-            if (process == null || process.ExitCode != 0)
-                throw new InvalidOperationException($"powercfg -hibernate on 失败，退出代码: {process?.ExitCode}");
+            if (process == null)
+                throw new InvalidOperationException("无法启动 powercfg.exe");
+            if (!process.WaitForExit(10000))
+            {
+                LogService.Instance.Warning("[OptimizerPage.快速启动] powercfg -hibernate on 超时（10 秒）未退出，按失败处理");
+                throw new InvalidOperationException("powercfg -hibernate on 执行超时");
+            }
+            if (process.ExitCode != 0)
+                throw new InvalidOperationException($"powercfg -hibernate on 失败，退出代码: {process.ExitCode}");
 
             using var powerKey = Registry.LocalMachine.CreateSubKey(@"SYSTEM\CurrentControlSet\Control\Power");
             powerKey?.SetValue("HibernateEnabled", 1, RegistryValueKind.DWord);
@@ -400,16 +407,22 @@ public partial class OptimizerPage : Page
                                         UseShellExecute = false,
                                         CreateNoWindow = true
                                     });
-                                    setActiveProcess?.WaitForExit(10000);
-                                    if (setActiveProcess != null && setActiveProcess.ExitCode == 0)
+                                    if (setActiveProcess == null)
+                                        return (false, "无法启动 powercfg");
+                                    if (!setActiveProcess.WaitForExit(10000))
+                                    {
+                                        LogService.Instance.Warning("[OptimizerPage.卓越性能] powercfg /setactive 超时（10 秒）未退出，按失败处理");
+                                        return (false, "powercfg /setactive 执行超时");
+                                    }
+                                    if (setActiveProcess.ExitCode == 0)
                                         return (true, "卓越性能电源计划已激活");
-                                    return (false, $"激活卓越性能计划失败，powercfg 退出代码: {setActiveProcess?.ExitCode}");
+                                    return (false, $"激活卓越性能计划失败，powercfg 退出代码: {setActiveProcess.ExitCode}");
                                 }
                             }
                         }
                     }
 
-                    var duplicateProcess = new Process
+                    using var duplicateProcess = new Process
                     {
                         StartInfo = new ProcessStartInfo
                         {
@@ -417,13 +430,16 @@ public partial class OptimizerPage : Page
                             Arguments = "-duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61",
                             UseShellExecute = true,
                             CreateNoWindow = true,
-                            WindowStyle = ProcessWindowStyle.Hidden,
-                            Verb = "runas"
+                            WindowStyle = ProcessWindowStyle.Hidden
                         }
                     };
 
                     duplicateProcess.Start();
-                    duplicateProcess.WaitForExit(30000);
+                    if (!duplicateProcess.WaitForExit(30000))
+                    {
+                        LogService.Instance.Warning("[OptimizerPage.卓越性能] powercfg -duplicatescheme 超时（30 秒）未退出，按失败处理");
+                        return (false, "创建卓越性能计划超时，powercfg 未在 30 秒内退出。系统可能不支持卓越性能计划（Windows家庭版可能无此功能）");
+                    }
 
                     if (duplicateProcess.ExitCode != 0)
                     {
@@ -464,11 +480,17 @@ public partial class OptimizerPage : Page
                                     UseShellExecute = false,
                                     CreateNoWindow = true
                                 });
-                                setActiveProcess?.WaitForExit(10000);
+                                if (setActiveProcess == null)
+                                    return (false, "无法启动 powercfg");
+                                if (!setActiveProcess.WaitForExit(10000))
+                                {
+                                    LogService.Instance.Warning("[OptimizerPage.卓越性能] powercfg /setactive 超时（10 秒）未退出，按失败处理");
+                                    return (false, "powercfg /setactive 执行超时");
+                                }
 
-                                if (setActiveProcess != null && setActiveProcess.ExitCode == 0)
+                                if (setActiveProcess.ExitCode == 0)
                                     return (true, "卓越性能电源计划已创建并激活");
-                                return (false, $"激活卓越性能计划失败，powercfg 退出代码: {setActiveProcess?.ExitCode}");
+                                return (false, $"激活卓越性能计划失败，powercfg 退出代码: {setActiveProcess.ExitCode}");
                             }
                         }
                     }
@@ -525,10 +547,16 @@ public partial class OptimizerPage : Page
                         CreateNoWindow = true
                     });
 
-                    process?.WaitForExit(10000);
-                    if (process != null && process.ExitCode == 0)
+                    if (process == null)
+                        return (false, "无法启动 powercfg");
+                    if (!process.WaitForExit(10000))
+                    {
+                        LogService.Instance.Warning("[OptimizerPage.平衡电源] powercfg /setactive 超时（10 秒）未退出，按失败处理");
+                        return (false, "powercfg /setactive 执行超时");
+                    }
+                    if (process.ExitCode == 0)
                         return (true, "已恢复平衡电源计划");
-                    return (false, $"恢复平衡电源计划失败，powercfg 退出代码: {process?.ExitCode}");
+                    return (false, $"恢复平衡电源计划失败，powercfg 退出代码: {process.ExitCode}");
                 }
                 catch (Exception ex)
                 {
@@ -689,7 +717,12 @@ public partial class OptimizerPage : Page
                 results.Add($"✗ {failLabel}：无法启动 bcdedit.exe");
                 return false;
             }
-            process.WaitForExit(10000);
+            if (!process.WaitForExit(10000))
+            {
+                LogService.Instance.Warning($"[OptimizerPage.VBS] bcdedit {arguments} 超时（10 秒）未退出，按失败处理");
+                results.Add($"✗ {failLabel}：bcdedit 执行超时（10 秒）");
+                return false;
+            }
             if (process.ExitCode == 0)
             {
                 results.Add($"✓ {okLabel}");
@@ -758,8 +791,12 @@ public partial class OptimizerPage : Page
                     });
                     if (process != null)
                     {
-                        process.WaitForExit(10000);
-                        if (process.ExitCode == 0)
+                        if (!process.WaitForExit(10000))
+                        {
+                            LogService.Instance.Warning("[OptimizerPage.VBS] bcdedit /set hypervisorlaunchtype off 超时（10 秒）未退出，按失败处理");
+                            results.Add("✗ 禁用Hypervisor失败：bcdedit 执行超时（10 秒）");
+                        }
+                        else if (process.ExitCode == 0)
                             results.Add("✓ 禁用Hypervisor启动类型");
                         else
                             results.Add($"✗ 禁用Hypervisor失败，bcdedit 退出代码: {process.ExitCode}");
@@ -1008,16 +1045,20 @@ public partial class OptimizerPage : Page
                         FileName = "regedit.exe",
                         Arguments = $"/s \"{tempRegFile}\"",
                         UseShellExecute = true,
-                        Verb = "runas",
                         WindowStyle = ProcessWindowStyle.Hidden
                     });
 
                     if (process != null)
                     {
-                        process.WaitForExit(30000);
+                        bool exited = process.WaitForExit(30000);
                         File.Delete(tempRegFile);
 
-                        if (process.ExitCode == 0)
+                        if (!exited)
+                        {
+                            LogService.Instance.Warning("[OptimizerPage.系统日志] regedit /s 导入超时（30 秒）未退出，按失败处理");
+                            results.Add("✗ 注册表导入失败：regedit 执行超时（30 秒）");
+                        }
+                        else if (process.ExitCode == 0)
                         {
                             results.Add("✓ 禁用组件堆栈日志");
                             results.Add("✓ 禁用更新解压模块日志");
@@ -1047,11 +1088,23 @@ public partial class OptimizerPage : Page
                         UseShellExecute = false,
                         CreateNoWindow = true
                     });
-                    process?.WaitForExit(10000);
-                    if (process != null && process.ExitCode == 0)
+                    if (process == null)
+                    {
+                        results.Add("✗ 禁用WfpDiag.ETL日志失败：无法启动 netsh.exe");
+                    }
+                    else if (!process.WaitForExit(10000))
+                    {
+                        LogService.Instance.Warning("[OptimizerPage.系统日志] netsh wfp set options netevents=off 超时（10 秒）未退出，按失败处理");
+                        results.Add("✗ 禁用WfpDiag.ETL日志失败：netsh 执行超时（10 秒）");
+                    }
+                    else if (process.ExitCode == 0)
+                    {
                         results.Add("✓ 禁用WfpDiag.ETL日志");
+                    }
                     else
-                        results.Add($"✗ 禁用WfpDiag.ETL日志失败，netsh 退出代码: {process?.ExitCode}");
+                    {
+                        results.Add($"✗ 禁用WfpDiag.ETL日志失败，netsh 退出代码: {process.ExitCode}");
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -1138,9 +1191,16 @@ public partial class OptimizerPage : Page
                         UseShellExecute = false,
                         CreateNoWindow = true
                     });
-                    process?.WaitForExit(10000);
-
-                    if (process != null && process.ExitCode == 0)
+                    if (process == null)
+                    {
+                        results.Add("✗ 恢复WfpDiag.ETL日志失败：无法启动 netsh.exe");
+                    }
+                    else if (!process.WaitForExit(10000))
+                    {
+                        LogService.Instance.Warning("[OptimizerPage.系统日志] netsh wfp set options netevents=on 超时（10 秒）未退出，按失败处理");
+                        results.Add("✗ 恢复WfpDiag.ETL日志失败：netsh 执行超时（10 秒）");
+                    }
+                    else if (process.ExitCode == 0)
                     {
                         using var key4 = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\BFE\Parameters\Policy\Options", true);
                         key4?.DeleteValue("CollectNetEvents", false);
@@ -1148,7 +1208,7 @@ public partial class OptimizerPage : Page
                     }
                     else
                     {
-                        results.Add($"✗ 恢复WfpDiag.ETL日志失败，netsh 退出代码: {process?.ExitCode}");
+                        results.Add($"✗ 恢复WfpDiag.ETL日志失败，netsh 退出代码: {process.ExitCode}");
                     }
                 }
                 catch (Exception ex)
@@ -1223,10 +1283,35 @@ public partial class OptimizerPage : Page
     private (bool Success, bool Cancelled, int OptimizedCount, double FreedMB) OptimizeMemoryInternal(CancellationToken token)
     {
         int optimizedCount = 0;
-        long freedBytes = 0;
+        long beforeTotalBytes = 0;
+        long afterTotalBytes = 0;
+
+        // 统计当前所有进程 WorkingSet64 之和（实际占用内存），用于计算优化前后差值
+        long GetTotalWorkingSet()
+        {
+            long total = 0;
+            foreach (var p in Process.GetProcesses())
+            {
+                try
+                {
+                    total += p.WorkingSet64;
+                }
+                catch
+                {
+                    // 进程可能已退出，忽略
+                }
+                finally
+                {
+                    p.Dispose();
+                }
+            }
+            return total;
+        }
 
         try
         {
+            beforeTotalBytes = GetTotalWorkingSet();
+
             var processes = Process.GetProcesses();
             var options = new ParallelOptions
             {
@@ -1241,8 +1326,6 @@ public partial class OptimizerPage : Page
 
                 try
                 {
-                    var beforeMemory = process.WorkingSet64;
-
                     var handle = OpenProcess(PROCESS_SET_QUOTA | PROCESS_QUERY_INFORMATION, false, process.Id);
                     if (handle != IntPtr.Zero)
                     {
@@ -1251,7 +1334,6 @@ public partial class OptimizerPage : Page
                             if (EmptyWorkingSet(handle))
                             {
                                 Interlocked.Increment(ref optimizedCount);
-                                Interlocked.Add(ref freedBytes, beforeMemory);
                             }
                         }
                         finally
@@ -1272,18 +1354,22 @@ public partial class OptimizerPage : Page
 
             if (token.IsCancellationRequested)
             {
-                return (false, true, optimizedCount, freedBytes / (1024.0 * 1024.0));
+                return (false, true, optimizedCount, 0);
             }
 
             GC.Collect(GC.MaxGeneration, GCCollectionMode.Optimized, true);
             GC.WaitForPendingFinalizers();
             GC.Collect();
 
-            return (true, false, optimizedCount, freedBytes / (1024.0 * 1024.0));
+            // 实际释放量 = 优化前 WorkingSet 总和 - 优化后 WorkingSet 总和（差值可能为负，如实上报）
+            afterTotalBytes = GetTotalWorkingSet();
+            double freedMB = (beforeTotalBytes - afterTotalBytes) / (1024.0 * 1024.0);
+
+            return (true, false, optimizedCount, freedMB);
         }
         catch (OperationCanceledException)
         {
-            return (false, true, optimizedCount, freedBytes / (1024.0 * 1024.0));
+            return (false, true, optimizedCount, 0);
         }
     }
 
@@ -1354,5 +1440,33 @@ public partial class OptimizerPage : Page
         {
             _isOperating = false;
         }
+    }
+
+    /// <summary>恢复Windows更新：删除 PauseWindowsUpdate_Click 写入的 7 个暂停相关注册表值，还原默认状态。</summary>
+    private async void RestoreWindowsUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        await ExecuteRegistryOperationAsync("恢复Windows更新", () =>
+        {
+            string winUpdateRegPath = @"SOFTWARE\Microsoft\WindowsUpdate\UX\Settings";
+            string[] pauseValues =
+            {
+                "FlightSettingsMaxPauseDays",
+                "PauseFeatureUpdatesStartTime",
+                "PauseFeatureUpdatesEndTime",
+                "PauseQualityUpdatesStartTime",
+                "PauseQualityUpdatesEndTime",
+                "PauseUpdatesStartTime",
+                "PauseUpdatesExpiryTime"
+            };
+
+            using var key = Registry.LocalMachine.OpenSubKey(winUpdateRegPath, true);
+            if (key != null)
+            {
+                foreach (var name in pauseValues)
+                {
+                    key.DeleteValue(name, throwOnMissingValue: false);
+                }
+            }
+        }, false);
     }
 }

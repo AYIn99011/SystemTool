@@ -53,6 +53,7 @@ public partial class MainWindow : Window
         LogService.Instance.AddUpdateLog("v1.1.0", "2026-10-05", "• 设备信息页面大改：添加CPU/内存/GPU使用率进度条显示\n• 添加CPU和GPU温度实时监控\n• 添加内存频率和类型信息\n• 添加显示器信息\n• 多线程并行读取硬件数据\n• 卡片布局优化，左右对齐\n• 更换设备信息页面图标");
         LogService.Instance.AddUpdateLog("v1.2.0", "2026-10-07", "• 清理页面重做：顶部汇总卡片（一键扫描/清理、上次清理时间）、11 项清理范围可选、每项显示可清理大小\n• 扫描逻辑完善：微信/抖音/QQ音乐/网易云/酷狗多盘符自适应查找，浏览器多 Profile，补全缩略图与图标缓存路径\n• 修复：窗口缩放后部分页面文字发糊（统一 Ideal 文本渲染）\n• 修复：CPU 温度曾误显示主板热区温度，现读不到显示 --；改用 PawnIO 驱动，缺失时启动提示安装（内置安装包，无需联网）\n• 修复：WMI 温度查询失败每秒刷屏日志\n• 扫描跳过的无权限目录现记录具体名称，并跳过软链接\n• 修复：更新日志日期全部显示当天的问题\n• 新增 README 项目说明");
         LogService.Instance.AddUpdateLog("v1.3.0", "2026-10-11", "• 新增：设备信息页电池信息（仅有电池的设备显示）：剩余电量、充电状态、续航/充电时间、电池健康度\n• 修复：GEEK 卸载工具启动前校验哈希，损坏则拒绝运行\n• 修复：VBS 关闭/开启的状态记录与恢复逻辑（关闭失败不再记成功；开启精确恢复备份）\n• 修复：powercfg 与 netsh 相关操作增加退出码检查，失败不再显示成功\n• 修复：CPU 温度彻底移除主板热区温度兜底，读不到真实温度显示 --\n• 修复：清理页面快速切换分类时预估数字错乱（并发竞态）\n• 修复：MAS 激活可能的死锁与超时孤儿进程\n• 修复：资源管理器重启失败不再静默（重试一次，仍失败引导手动恢复）\n• 优化：Win11Debloat 增加哈希校验（验 zip→解压→验 Run.bat 严格顺序）\n• 优化：清理大缓存改流式枚举，降低内存占用\n• 优化：VBS 恢复部分失败时保留备份以便重试；GEEK 临时文件唯一命名\n• 调整：\"激活 Windows\"入口移至\"其他工具\"页，点击先显示中文引导；\"禁用系统日志\"增加后果提示");
+        LogService.Instance.AddUpdateLog("v1.4.0", "2026-10-11", "• 清理范围修正：酷狗 Download/Lyric、QQ音乐安装目录 Download 与全盘匹配、网易云 download、~/Music 下 QQMusic 目录不再清理\n• 工具页交互式外部脚本启动改为可见窗口（用户可操作菜单）\n• 事件日志清理命令修正（改走 PowerShell）并加退出码检查\n• 新增\"恢复 Windows 更新\"按钮（与暂停更新成对）\n• 单独清理后对应分类预估缓存失效\n• QQ 缓存清理启用媒体文件保护名单（图片/视频/文档不再误删）\n• PawnIO 驱动安装：关窗取消安装、静默安装加 10 分钟超时、安装成功删除 declined 标记与安装包残留、增加驱动版本 >=2.2.0 校验、双开并发安装加锁\n• 注册表删除计数只计成功项；QQ 缓存清理不再误杀 QQBrowser/QQMusic 进程\n• 硬盘列表刷新改为属性更新（不再闪烁丢滚动）；无电池设备跳过电池查询；磁盘用量读不到显示 --\n• 内存优化上报改为实际释放量；8 处外部命令超时不再误读 ExitCode\n• 移除多处冗余 Verb=\"runas\"；修复句柄泄漏（duplicateProcess、shutdown 进程）；Wow6432Node 注册表路径修复；微软商店缓存路径去重\n• 修复：音乐应用全盘扫描排除用户媒体库（音乐/视频/图片），不再进入个人媒体目录；商店版包名匹配改为前缀精确匹配；删除无调用的死代码");
     }
 
     private void MainWindow_SourceInitialized(object? sender, EventArgs e)
@@ -374,6 +375,9 @@ public partial class MainWindow : Window
     // 字体缩放档位：90% ~ 130%，默认 110%
     private static readonly double[] FontScales = { 0.9, 1.0, 1.1, 1.2, 1.3 };
     private int _fontScaleIndex = 2;
+    // 字体缩放的基准窗口尺寸：首次应用缩放时记录，之后始终用 原始尺寸 × 比例 计算
+    private bool _fontScaleOrigRecorded = false;
+    private double _origWidth, _origHeight, _origMinWidth, _origMinHeight, _origScale;
 
     private void FontDecrease_Click(object sender, RoutedEventArgs e)
     {
@@ -405,13 +409,24 @@ public partial class MainWindow : Window
         RootGrid.LayoutTransform = new ScaleTransform(newScale, newScale);
 
         // 窗口等比缩放（最大化时不调整，避免与系统窗口管理冲突）
-        if (WindowState == WindowState.Normal && oldScale > 0)
+        if (WindowState == WindowState.Normal)
         {
-            double ratio = newScale / oldScale;
-            Width *= ratio;
-            Height *= ratio;
-            MinWidth *= ratio;
-            MinHeight *= ratio;
+            // 首次记录原始尺寸；始终用 原始尺寸 × (newScale/基准缩放) 计算，
+            // 不再在当前值上连乘，避免来回切换缩放档位的浮点漂移
+            if (!_fontScaleOrigRecorded)
+            {
+                _origWidth = Width;
+                _origHeight = Height;
+                _origMinWidth = MinWidth;
+                _origMinHeight = MinHeight;
+                _origScale = newScale;
+                _fontScaleOrigRecorded = true;
+            }
+            double ratio = _origScale > 0 ? newScale / _origScale : 1.0;
+            Width = _origWidth * ratio;
+            Height = _origHeight * ratio;
+            MinWidth = _origMinWidth * ratio;
+            MinHeight = _origMinHeight * ratio;
         }
 
         FontScaleText.Text = $"{(int)(newScale * 100)}%";
