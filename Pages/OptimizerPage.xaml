@@ -19,7 +19,7 @@
                     <StackPanel>
                         <TextBlock Text="系统优化" FontSize="16" FontWeight="SemiBold"
                                    Foreground="{StaticResource TextPrimaryBrush}"/>
-                        <TextBlock Text="共 16 项优化 · 调整系统性能与外观" FontSize="12"
+                        <TextBlock Text="共 15 项优化 · 调整系统性能与外观" FontSize="12"
                                    Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
                     </StackPanel>
                 </Border>
