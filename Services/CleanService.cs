@@ -644,7 +644,16 @@ namespace SystemTool.Services
                             try { size += new FileInfo(file).Length; } catch { }
                         }
                         foreach (var sub in Directory.EnumerateDirectories(dir))
+                        {
+                            try
+                            {
+                                // 跳过软链接/junction：不跟随，防止循环链接导致无限遍历
+                                if (new DirectoryInfo(sub).Attributes.HasFlag(FileAttributes.ReparsePoint))
+                                    continue;
+                            }
+                            catch { }
                             stack.Push(sub);
+                        }
                     }
                     catch { }
                 }

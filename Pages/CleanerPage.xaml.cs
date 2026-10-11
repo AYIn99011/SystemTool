@@ -1672,6 +1672,12 @@ namespace SystemTool.Pages
                         continue;
                     }
 
+                    // 跳过软链接/junction：不递归进入其目标（与扫描侧 ScanDirectoryForAppCache 同策略）
+                    if (dir.Attributes.HasFlag(FileAttributes.ReparsePoint))
+                    {
+                        continue;
+                    }
+
                     try
                     {
                         var subResult = CleanQQCacheDirectoryRecursive(dir.FullName, protectedFolders, protectedExtensions);
@@ -2875,7 +2881,16 @@ namespace SystemTool.Pages
                 }
 
                 foreach (var sub in subDirs)
+                {
+                    try
+                    {
+                        // 跳过软链接/junction：不进入其目标，防止删除目标位置的真实文件
+                        if (new DirectoryInfo(sub).Attributes.HasFlag(FileAttributes.ReparsePoint))
+                            continue;
+                    }
+                    catch { }
                     stack.Push(sub);
+                }
             }
 
             // 阶段二：自底向上删除已清空的子目录（保留根目录本身；非空目录删除失败则跳过）
