@@ -1276,16 +1276,24 @@ public static class SystemInfoHelper
         {
             using var searcher = new System.Management.ManagementObjectSearcher(
                 "SELECT Name, BatteryStatus, EstimatedChargeRemaining, EstimatedRunTime, TimeToFullCharge, DesignCapacity, FullChargeCapacity FROM Win32_Battery");
-            foreach (System.Management.ManagementObject obj in searcher.Get())
+            using var results = searcher.Get();
+            foreach (System.Management.ManagementObject obj in results)
             {
-                info.HasBattery = true;
-                info.Name = Convert.ToString(obj["Name"]) ?? "--";
-                info.ChargePercent = ToIntOr(obj["EstimatedChargeRemaining"], -1);
-                info.Status = ToIntOr(obj["BatteryStatus"], 0);
-                info.EstimatedRunTimeMinutes = ToMinutesOrUnknown(obj["EstimatedRunTime"]);
-                info.TimeToFullChargeMinutes = ToMinutesOrUnknown(obj["TimeToFullCharge"]);
-                info.DesignCapacity = ToUIntOr(obj["DesignCapacity"]);
-                info.FullChargeCapacity = ToUIntOr(obj["FullChargeCapacity"]);
+                try
+                {
+                    info.HasBattery = true;
+                    info.Name = Convert.ToString(obj["Name"]) ?? "--";
+                    info.ChargePercent = ToIntOr(obj["EstimatedChargeRemaining"], -1);
+                    info.Status = ToIntOr(obj["BatteryStatus"], 0);
+                    info.EstimatedRunTimeMinutes = ToMinutesOrUnknown(obj["EstimatedRunTime"]);
+                    info.TimeToFullChargeMinutes = ToMinutesOrUnknown(obj["TimeToFullCharge"]);
+                    info.DesignCapacity = ToUIntOr(obj["DesignCapacity"]);
+                    info.FullChargeCapacity = ToUIntOr(obj["FullChargeCapacity"]);
+                }
+                finally
+                {
+                    obj.Dispose();
+                }
                 break; // 只取第一块电池
             }
         }
@@ -1293,10 +1301,59 @@ public static class SystemInfoHelper
         {
             LogService.Instance.Warning("[SystemInfoHelper.GetBatteryInfo] 读取电池信息失败", ex);
         }
+
+        // Win32_Battery 在很多机器上不返回容量（DesignCapacity/FullChargeCapacity 为 0），
+        // 降级查 root\wmi 的 BatteryStaticData / BatteryFullChargedCapacity。
+        if (info.HasBattery && (info.DesignCapacity == 0 || info.FullChargeCapacity == 0))
+        {
+            var (designCapacity, fullChargeCapacity) = GetBatteryCapacitiesFromWmi();
+            if (info.DesignCapacity == 0) info.DesignCapacity = designCapacity;
+            if (info.FullChargeCapacity == 0) info.FullChargeCapacity = fullChargeCapacity;
+        }
         return info;
     }
 
-    /// <summary>WMI 时间字段为 0xFFFFFFFF 时表示未知。</summary>
+    /// <summary>从 root\wmi 读取电池设计容量与满充容量（mWh）；失败返回 (0, 0)。</summary>
+    private static (uint DesignCapacity, uint FullChargeCapacity) GetBatteryCapacitiesFromWmi()
+    {
+        uint design = 0, full = 0;
+        try
+        {
+            var scope = new System.Management.ManagementScope(@"\\.\root\wmi");
+            scope.Connect();
+            using var designSearcher = new System.Management.ManagementObjectSearcher(
+                scope, new System.Management.ObjectQuery("SELECT DesignedCapacity FROM BatteryStaticData"));
+            using var designResults = designSearcher.Get();
+            foreach (System.Management.ManagementObject obj in designResults)
+            {
+                try
+                {
+                    design = ToUIntOr(obj["DesignedCapacity"]);
+                    if (design > 0) break;
+                }
+                finally { obj.Dispose(); }
+            }
+            using var fullSearcher = new System.Management.ManagementObjectSearcher(
+                scope, new System.Management.ObjectQuery("SELECT FullChargedCapacity FROM BatteryFullChargedCapacity"));
+            using var fullResults = fullSearcher.Get();
+            foreach (System.Management.ManagementObject obj in fullResults)
+            {
+                try
+                {
+                    full = ToUIntOr(obj["FullChargedCapacity"]);
+                    if (full > 0) break;
+                }
+                finally { obj.Dispose(); }
+            }
+        }
+        catch (Exception ex)
+        {
+            LogService.Instance.Warning("[SystemInfoHelper.GetBatteryCapacitiesFromWmi] 读取电池容量失败", ex);
+        }
+        return (design, full);
+    }
+
+    /// <summary>WMI 时间字段为 0xFFFFFFFF 时表示未知；驱动乱报的超大值（超过 24 小时）也按未知处理。</summary>
     private static int ToMinutesOrUnknown(object? value)
     {
         try
@@ -1304,7 +1361,8 @@ public static class SystemInfoHelper
             if (value == null) return -1;
             ulong v = Convert.ToUInt64(value);
             if (v >= 0xFFFFFFFE) return -1;
-            return (int)Math.Min(v, int.MaxValue);
+            if (v > 24 * 60) return -1; // 笔记本不可能充电/续航超过 24 小时，超大值视为驱动乱报
+            return (int)v;
         }
         catch { return -1; }
     }

@@ -118,16 +118,23 @@ public partial class DeviceInfoPage : Page
                     MonitorRefreshRateText.Text = SystemInfoHelper.GetMonitorRefreshRate();
                     LogService.Instance.Info($"显示器: {MonitorNameText.Text}");
 
-                    // 电池：仅有电池的设备显示；顺手记录有无电池，供定时刷新跳过无电池设备的 WMI 查询
-                    var battery = SystemInfoHelper.GetBatteryInfo();
-                    _hasBattery = battery.HasBattery;
-                    if (battery.HasBattery)
+                    // 电池：WMI 查询较慢，扔后台线程查完再回 UI 更新，避免阻塞页面加载；
+                    // 顺手记录有无电池，供定时刷新跳过无电池设备的 WMI 查询
+                    _ = System.Threading.Tasks.Task.Run(() =>
                     {
-                        BatterySection.Visibility = Visibility.Visible;
-                        BatteryNameText.Text = battery.Name;
-                        BatteryHealthText.Text = battery.HealthPercent.HasValue ? $"{battery.HealthPercent:F1}%" : "--";
-                        LogService.Instance.Info($"电池: {battery.Name}");
-                    }
+                        var battery = SystemInfoHelper.GetBatteryInfo();
+                        Dispatcher.BeginInvoke(() =>
+                        {
+                            _hasBattery = battery.HasBattery;
+                            if (battery.HasBattery)
+                            {
+                                BatterySection.Visibility = Visibility.Visible;
+                                BatteryNameText.Text = battery.Name;
+                                BatteryHealthText.Text = battery.HealthPercent.HasValue ? $"{battery.HealthPercent:F1}%" : "--";
+                                LogService.Instance.Info($"电池: {battery.Name}");
+                            }
+                        });
+                    });
 
                     LogService.Instance.Success("静态设备信息加载完成");
                     _isStaticInfoLoaded = true;

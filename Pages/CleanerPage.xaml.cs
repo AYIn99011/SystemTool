@@ -247,13 +247,25 @@ namespace SystemTool.Pages
         private async Task<Dictionary<string, long>> EstimateAllAsync()
         {
             var selected = _categories.Where(c => _selectedKeys.Contains(c.Key)).ToList();
+            var advSelected = _advancedItems.Where(i => i.IsSelected).ToList();
             var sizes = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+            int total = selected.Count + advSelected.Count;
+            int done = 0;
             for (int i = 0; i < selected.Count; i++)
             {
                 var cat = selected[i];
                 long sub = await Task.Run(() => EstimateCategorySize(cat));
                 sizes[cat.Key] = sub;
-                UpdateRing(selected.Count == 0 ? 0 : (double)(i + 1) / selected.Count * 0.95);
+                done++;
+                UpdateRing(total == 0 ? 0 : (double)done / total * 0.95);
+            }
+            foreach (var item in advSelected)
+            {
+                string key = AdvEstimateKey(item);
+                long sub = await Task.Run(() => EstimateAdvancedItem(item));
+                sizes[key] = sub;
+                done++;
+                UpdateRing(total == 0 ? 0 : (double)done / total * 0.95);
             }
             return sizes;
         }
@@ -303,13 +315,21 @@ namespace SystemTool.Pages
                 var missing = _categories
                     .Where(c => _selectedKeys.Contains(c.Key) && !_lastEstimates.ContainsKey(c.Key))
                     .ToList();
-                if (missing.Count > 0)
+                var missingAdv = _advancedItems
+                    .Where(i => i.IsSelected && !_lastEstimates.ContainsKey(AdvEstimateKey(i)))
+                    .ToList();
+                if (missing.Count > 0 || missingAdv.Count > 0)
                 {
                     EstimateText.Text = "正在扫描…";
                     foreach (var cat in missing)
                     {
                         long sub = await Task.Run(() => EstimateCategorySize(cat));
                         _lastEstimates[cat.Key] = sub;
+                    }
+                    foreach (var item in missingAdv)
+                    {
+                        long sub = await Task.Run(() => EstimateAdvancedItem(item));
+                        _lastEstimates[AdvEstimateKey(item)] = sub;
                     }
                 }
                 UpdateEstimateDisplay();
@@ -328,6 +348,11 @@ namespace SystemTool.Pages
             {
                 if (_selectedKeys.Contains(c.Key) && _lastEstimates.TryGetValue(c.Key, out long size))
                     est += size;
+            }
+            foreach (var item in _advancedItems)
+            {
+                if (item.IsSelected && _lastEstimates.TryGetValue(AdvEstimateKey(item), out long advSize))
+                    est += advSize;
             }
             _lastEstimate = est;
             _estimateReady = _lastEstimates.Count > 0;
@@ -362,9 +387,10 @@ namespace SystemTool.Pages
                     return;
                 }
 
-                // 一键清理：按顺序执行已选分类
+                // 一键清理：按顺序执行已选分类 + 已选高级清理项
                 var selected = _categories.Where(c => _selectedKeys.Contains(c.Key)).ToList();
-                if (selected.Count == 0)
+                var advSelected = _advancedItems.Where(i => i.IsSelected).ToList();
+                if (selected.Count == 0 && advSelected.Count == 0)
                 {
                     LogService.Instance.Warning("一键清理：未选择任何清理项");
                     return;
@@ -374,6 +400,8 @@ namespace SystemTool.Pages
                 long freed = 0;
                 foreach (var cat in selected)
                     freed += await cat.CleanCoreAsync();
+                foreach (var item in advSelected)
+                    freed += await CleanAdvancedItemAsync(item);
                 LogService.Instance.Info("======== 一键清理结束 ========");
                 LogService.Instance.Success($"一键清理完成，共释放空间: {FormatSize(freed)}");
                 MarkCleaned();
@@ -386,6 +414,24 @@ namespace SystemTool.Pages
             {
                 _isOperating = false;
                 OneClickButton.IsEnabled = true;
+            }
+        }
+
+        /// <summary>重新扫描：清空预估缓存，按当前勾选（含高级清理项）重新扫描。</summary>
+        private async void RescanButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isOperating) return;
+            _isOperating = true;
+            try
+            {
+                _lastEstimates.Clear();
+                _estimateReady = false;
+                OneClickButton.Content = "扫描中…";
+                await RunEstimateAsync();
+            }
+            finally
+            {
+                _isOperating = false;
             }
         }
 
@@ -546,6 +592,34 @@ namespace SystemTool.Pages
         private List<CleanItem> _advancedItems = new();
         private bool _suppressAdvancedToggle;
 
+        /// <summary>高级清理项在预估缓存中的 key（与主分类 Key 互不冲突）。</summary>
+        private static string AdvEstimateKey(CleanItem item) => "Adv:" + item.Name;
+
+        /// <summary>估算单个高级清理项的可清理大小（对其 Paths 逐个统计）。</summary>
+        private long EstimateAdvancedItem(CleanItem item)
+        {
+            long s = 0;
+            try
+            {
+                foreach (var p in item.Paths)
+                    s += CleanService.GetDirectorySize(p);
+            }
+            catch (Exception ex)
+            {
+                LogService.Instance.Warning($"[CleanerPage] 估算高级清理项 {item.Name} 失败", ex);
+            }
+            return s;
+        }
+
+        /// <summary>清理单个高级清理项，返回释放字节数（走一键清理统一入口）。</summary>
+        private async Task<long> CleanAdvancedItemAsync(CleanItem item)
+        {
+            LogService.Instance.Info($"正在清理（高级）: {item.Name}");
+            var r = await Task.Run(() => _cleanService.CleanPaths(item.Paths));
+            LogService.Instance.Info($"  {item.Name} 清理完成，释放空间: {FormatSize(r.Size)}");
+            return r.Size;
+        }
+
         private void BuildAdvancedCheckboxes()
         {
             _advancedItems = _cleanService.GetCleanGroups().SelectMany(g => g.Items).ToList();
@@ -578,6 +652,7 @@ namespace SystemTool.Pages
             if (sender is not CheckBox cb || cb.Tag is not CleanItem item) return;
             item.IsSelected = cb.IsChecked == true;
             UpdateAdvancedSummaryText();
+            _ = RefreshEstimateOnSelectionChangedAsync();
         }
 
         private void AdvancedSelectAllButton_Click(object sender, RoutedEventArgs e)
@@ -601,6 +676,7 @@ namespace SystemTool.Pages
                 _suppressAdvancedToggle = false;
             }
             UpdateAdvancedSummaryText();
+            _ = RefreshEstimateOnSelectionChangedAsync();
         }
 
         private void UpdateAdvancedSummaryText()
@@ -618,111 +694,7 @@ namespace SystemTool.Pages
             UpdateAdvancedSummaryText();
         }
 
-        private async void AdvancedStartButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (_isOperating)
-            {
-                LogService.Instance.Warning("正在执行其他操作，请稍候...");
-                return;
-            }
-
-            var selectedItems = _advancedItems.Where(i => i.IsSelected).ToList();
-            if (selectedItems.Count == 0)
-            {
-                MessageBox.Show("请至少选择一个清理项目", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            await ExecuteAdvancedCleanAsync(selectedItems);
-        }
-
         #endregion
-
-        private async Task ExecuteAdvancedCleanAsync(List<CleanItem> items)
-        {
-            _isOperating = true;
-            LogService.Instance.Info($"开始高级清理，共选择 {items.Count} 个项目...");
-            LogService.Instance.Info("----------------------------------------");
-
-            long totalSize = 0;
-            int totalFiles = 0;
-            int totalDirs = 0;
-            int successCount = 0;
-            int failCount = 0;
-            var failedItems = new List<string>();
-
-            try
-            {
-                foreach (var item in items)
-                {
-                    LogService.Instance.Info($"正在清理: {item.Name}");
-                    if (!string.IsNullOrEmpty(item.Description))
-                    {
-                        LogService.Instance.Info($"  描述: {item.Description}");
-                    }
-
-                    try
-                    {
-                        var cleanResult = await Task.Run(() => _cleanService.CleanPaths(item.Paths));
-
-                        if (cleanResult.FileCount > 0 || cleanResult.DirCount > 0)
-                        {
-                            LogService.Instance.Info($"  清理路径:");
-                            foreach (var path in item.Paths)
-                            {
-                                var exists = Directory.Exists(path) || File.Exists(path);
-                                LogService.Instance.Info($"    - {path} {(exists ? "" : "[不存在]")}");
-                            }
-                            LogService.Instance.Info($"  删除文件: {cleanResult.FileCount} 个");
-                            LogService.Instance.Info($"  删除文件夹: {cleanResult.DirCount} 个");
-                            LogService.Instance.Info($"  释放空间: {_cleanService.FormatSize(cleanResult.Size)}");
-                            LogService.Instance.Success($"  {item.Name} 清理完成");
-                            successCount++;
-                        }
-                        else
-                        {
-                            LogService.Instance.Info($"  该项目无需清理或路径不存在");
-                            LogService.Instance.Info($"  清理路径:");
-                            foreach (var path in item.Paths)
-                            {
-                                var exists = Directory.Exists(path) || File.Exists(path);
-                                LogService.Instance.Info($"    - {path} {(exists ? "[已清空]" : "[不存在]")}");
-                            }
-                            successCount++;
-                        }
-
-                        totalSize += cleanResult.Size;
-                        totalFiles += cleanResult.FileCount;
-                        totalDirs += cleanResult.DirCount;
-                    }
-                    catch (Exception ex)
-                    {
-                        LogService.Instance.Error($"  {item.Name} 清理失败: {ex.Message}");
-                        failCount++;
-                        failedItems.Add(item.Name);
-                    }
-
-                    LogService.Instance.Info("----------------------------------------");
-                }
-
-                LogService.Instance.Info($"高级清理汇总:");
-                LogService.Instance.Info($"  成功: {successCount} 个项目");
-                if (failCount > 0)
-                {
-                    LogService.Instance.Warning($"  失败: {failCount} 个项目 ({string.Join(", ", failedItems)})");
-                }
-                LogService.Instance.Info($"  总计删除: {totalFiles} 个文件, {totalDirs} 个文件夹");
-                LogService.Instance.Success($"高级清理完成，共释放空间: {_cleanService.FormatSize(totalSize)}");
-            }
-            catch (Exception ex)
-            {
-                LogService.Instance.Error($"高级清理失败: {ex.Message}");
-            }
-            finally
-            {
-                _isOperating = false;
-            }
-        }
 
         private async void CleanStoreCache_Click(object sender, RoutedEventArgs e)
         {

@@ -40,9 +40,14 @@
                             <TextBlock x:Name="LastCleanText" Text="上次清理：--" FontSize="13"
                                        Foreground="{StaticResource TextSecondaryBrush}"/>
                         </StackPanel>
-                        <Button x:Name="OneClickButton" Grid.Column="2" Content="一键扫描"
-                                Style="{StaticResource AccentButton}" Click="OneClickButton_Click"
-                                VerticalAlignment="Center" Padding="46,14" FontSize="16" Cursor="Hand"/>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button x:Name="RescanButton" Content="重新扫描"
+                                    Style="{StaticResource FluentButton}" Click="RescanButton_Click"
+                                    Padding="24,14" FontSize="16" Cursor="Hand" Margin="0,0,12,0"/>
+                            <Button x:Name="OneClickButton" Content="一键扫描"
+                                    Style="{StaticResource AccentButton}" Click="OneClickButton_Click"
+                                    Padding="46,14" FontSize="16" Cursor="Hand"/>
+                        </StackPanel>
                     </Grid>
                 </Border>
 
@@ -68,11 +73,8 @@
                                         Padding="16,2" MinHeight="28" FontSize="12" Margin="0,0,8,0"
                                         Click="AdvancedClearButton_Click" Cursor="Hand"/>
                                 <ToggleButton x:Name="AdvancedToggle" Content="收起 ▴" IsChecked="True"
-                                              Style="{StaticResource FluentToggleButton}" Margin="0,0,8,0"
+                                              Style="{StaticResource FluentToggleButton}"
                                               Click="AdvancedToggle_Click"/>
-                                <Button x:Name="AdvancedStartButton" Content="开始清理" Style="{StaticResource AccentButton}"
-                                        Padding="16,2" MinHeight="28" FontSize="12"
-                                        Click="AdvancedStartButton_Click" Cursor="Hand"/>
                             </StackPanel>
                         </Grid>
                         <Border x:Name="AdvancedPanel" Visibility="Visible" Margin="0,14,0,0"
