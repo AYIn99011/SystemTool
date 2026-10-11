@@ -45,8 +45,22 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         run: Compress-Archive -Path "bin\Release\net10.0-windows\win-x64\publish\*" -DestinationPath "SystemTool-${{ github.ref_name }}-win-x64.zip"
 
+      - name: Extract current version release notes
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          $text = [System.IO.File]::ReadAllText("RELEASE_NOTES.md", [System.Text.Encoding]::UTF8)
+          $m = [regex]::Matches($text, '(?m)^# ')
+          if ($m.Count -eq 0) { throw "RELEASE_NOTES.md 中未找到版本章节 (^# )，拒绝生成空正文" }
+          $start = $m[0].Index
+          $end = $text.Length
+          if ($m.Count -gt 1) { $end = $m[1].Index }
+          $section = $text.Substring($start, $end - $start).TrimEnd()
+          [System.IO.File]::WriteAllText("RELEASE_NOTES_CURRENT.md", $section + "`n", [System.Text.UTF8Encoding]::new($false))
+          Write-Host "已提取当前版本正文，前200字符:"
+          Write-Host $section.Substring(0, [Math]::Min(200, $section.Length))
+
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
-        run: gh release create "${{ github.ref_name }}" --title "系统工具箱 ${{ github.ref_name }}" --notes-file RELEASE_NOTES.md "SystemTool-${{ github.ref_name }}-win-x64.zip"
+        run: gh release create "${{ github.ref_name }}" --title "系统工具箱 ${{ github.ref_name }}" --notes-file RELEASE_NOTES_CURRENT.md "SystemTool-${{ github.ref_name }}-win-x64.zip"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
